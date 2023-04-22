@@ -24,6 +24,7 @@
 **********************************************************************************************/
 
 #include "raylib.h"
+#include "raymath.h"
 #include "screens.hpp"
 
 //----------------------------------------------------------------------------------
@@ -79,6 +80,11 @@ void DrawGameplayScreen(void)
     BeginMode3D(camera);
 
     DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
+
+    // Vector3 cameraC = Vector3Add(Vector3Normalize(Vector3Subtract(cubePosition, camera.position)), camera.position);
+
+    // DrawSphere(cameraC, 0.2f, GREEN);
+
     DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
 
     DrawGrid(10, 1.0f);
