@@ -13,7 +13,7 @@
 ********************************************************************************************/
 
 #include "raylib.h"
-#include "screens.h"    // NOTE: Declares global (extern) variables and screens functions
+#include "screens.hpp"    // NOTE: Declares global (extern) variables and screens functions
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -78,7 +78,7 @@ int main(void)
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
 #else
-    SetTargetFPS(60);       // Set our game to run at 60 frames-per-second
+    SetTargetFPS(120);       // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
     // Main game loop
@@ -286,7 +286,7 @@ static void UpdateDrawFrame(void)
         // Draw full screen rectangle in front of everything
         if (onTransition) DrawTransition();
 
-        //DrawFPS(10, 10);
+        DrawFPS(10, 10);
 
     EndDrawing();
     //----------------------------------------------------------------------------------

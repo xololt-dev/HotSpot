@@ -2,7 +2,7 @@
 *
 *   raylib - Advance Game template
 *
-*   Ending Screen Functions Definitions (Init, Update, Draw, Unload)
+*   Gameplay Screen Functions Definitions (Init, Update, Draw, Unload)
 *
 *   Copyright (c) 2014-2022 Ramon Santamaria (@raysan5)
 *
@@ -24,7 +24,7 @@
 **********************************************************************************************/
 
 #include "raylib.h"
-#include "screens.h"
+#include "screens.hpp"
 
 //----------------------------------------------------------------------------------
 // Module Variables Definition (local)
@@ -32,50 +32,68 @@
 static int framesCounter = 0;
 static int finishScreen = 0;
 
+// Define the camera to look into our 3d world
+Camera3D camera = { 0 };
+Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
+
 //----------------------------------------------------------------------------------
-// Ending Screen Functions Definition
+// Gameplay Screen Functions Definition
 //----------------------------------------------------------------------------------
 
-// Ending Screen Initialization logic
-void InitEndingScreen(void)
+// Gameplay Screen Initialization logic
+void InitGameplayScreen(void)
 {
-    // TODO: Initialize ENDING screen variables here!
+    // TODO: Initialize GAMEPLAY screen variables here!
     framesCounter = 0;
     finishScreen = 0;
+
+    camera.position = { 0.0f, 10.0f, 10.0f };  // Camera position
+    camera.target = { 0.0f, 0.0f, 0.0f };      // Camera looking at point
+    camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
+    camera.fovy = 45.0f;                                // Camera field-of-view Y
+    camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
 }
 
-// Ending Screen Update logic
-void UpdateEndingScreen(void)
+// Gameplay Screen Update logic
+void UpdateGameplayScreen(void)
 {
-    // TODO: Update ENDING screen variables here!
+    // TODO: Update GAMEPLAY screen variables here!
 
-    // Press enter or tap to return to TITLE screen
+    // Press enter or tap to change to ENDING screen
     if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP))
     {
         finishScreen = 1;
         PlaySound(fxCoin);
     }
+
+    if (IsKeyDown(KEY_RIGHT)) camera.position.x += 1.0f;
+    if (IsKeyDown(KEY_LEFT)) camera.position.x -= 1.0f;
+    if (IsKeyDown(KEY_UP)) camera.position.y -= 1.0f;
+    if (IsKeyDown(KEY_DOWN)) camera.position.y += 1.0f;
 }
 
-// Ending Screen Draw logic
-void DrawEndingScreen(void)
+// Gameplay Screen Draw logic
+void DrawGameplayScreen(void)
 {
-    // TODO: Draw ENDING screen here!
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLUE);
+    // TODO: Draw GAMEPLAY screen here!
+    BeginMode3D(camera);
 
-    Vector2 pos = { 20, 10 };
-    DrawTextEx(font, "ENDING SCREEN", pos, font.baseSize*3.0f, 4, DARKBLUE);
-    DrawText("PRESS ENTER or TAP to RETURN to TITLE SCREEN", 120, 220, 20, DARKBLUE);
+    DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
+    DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
+
+    DrawGrid(10, 1.0f);
+
+    EndMode3D();
 }
 
-// Ending Screen Unload logic
-void UnloadEndingScreen(void)
+// Gameplay Screen Unload logic
+void UnloadGameplayScreen(void)
 {
-    // TODO: Unload ENDING screen variables here!
+    // TODO: Unload GAMEPLAY screen variables here!
 }
 
-// Ending Screen should finish?
-int FinishEndingScreen(void)
+// Gameplay Screen should finish?
+int FinishGameplayScreen(void)
 {
     return finishScreen;
 }
