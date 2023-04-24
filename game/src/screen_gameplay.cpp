@@ -26,8 +26,8 @@
 #include "raylib.h"
 #include "raymath.h"
 #include "rcamera.h"
-#include "screens.hpp"
 
+#include "screens.hpp"
 #include "camera.hpp"
 
 #define GLSL_VERSION    330
@@ -42,7 +42,7 @@ static int finishScreen = 0;
 Camera3D camera = { 0 };
 int cameraMode = CAMERA_FIRST_PERSON;
 
-Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
+Vector3 cubePosition = { 0.0f, 1.0f, 0.0f };
 
 Model model;
 BoundingBox bounds;
@@ -57,22 +57,18 @@ void InitGameplayScreen(void)
     // TODO: Initialize GAMEPLAY screen variables here!
     framesCounter = 0;
     finishScreen = 0;
-    
-    camera.position = { 0.0f, 7.0f, 7.0f };  // Camera position
-    camera.target = { 0.0f, 0.0f, 0.0f };      // Camera looking at point
-    camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
-    camera.fovy = 45.0f;                                // Camera field-of-view Y
-    camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
 
-    model = LoadModel("resources/models/icosphere.gltf");                 // Load model
-    bounds = GetMeshBoundingBox(model.meshes[0]);   // Set model bounds
+    SetupCamera(&camera);
+    
+    model = LoadModel("resources/models/icosphere.gltf");                   // Load model
+    bounds = GetMeshBoundingBox(model.meshes[0]);                                   // Set model bounds
 }
 
 // Gameplay Screen Update logic
 void UpdateGameplayScreen(void)
 {
     // TODO: Update GAMEPLAY screen variables here!
-
+    
     // Press enter or tap to change to ENDING screen
     if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
         finishScreen = 1;
@@ -89,13 +85,22 @@ void UpdateGameplayScreen(void)
 void DrawGameplayScreen(void)
 {
     // TODO: Draw GAMEPLAY screen here!
-
+    
     BeginMode3D(camera);
         ClearBackground(RAYWHITE);
-        DrawModel(model, cubePosition, 1.0f, WHITE);
-        DrawBoundingBox(bounds, GREEN);
+        
+        DrawPlane({ 0.0f, 0.0f, 0.0f }, { 100.0f, 100.0f }, { 144, 238, 144, 255 });
+        DrawSphere({ 0.0f, 0.0f, -75.0f }, 25.0f, YELLOW);
+        
+        DrawModel(model, cubePosition, 1.0f, LIGHTGRAY);
 
-        DrawGrid(10, 1.0f);
+        DrawCube({ 0.0f, 2.05f, -3.0f }, 6.1f, 4.0f, 0.1f, RED);
+        DrawCube({ -3.0f, 2.05f, 0.025f }, 0.1f, 4.0f, 5.95f, GREEN);
+        DrawCube({ 3.0f, 2.05f, 0.025f }, 0.1f, 4.0f, 5.95f, BLUE);
+        DrawCube({ 0.0f, 0.0f, 0.0f }, 6.1f, 0.1f, 6.1f, WHITE);
+        DrawCube({ 0.0f, 4.1f, 0.0f }, 6.1f, 0.1f, 6.1f, BLACK);
+
+        // DrawGrid(10, 1.0f);
 
     EndMode3D(); 
 }
