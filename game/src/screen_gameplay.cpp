@@ -25,7 +25,12 @@
 
 #include "raylib.h"
 #include "raymath.h"
+#include "rcamera.h"
 #include "screens.hpp"
+
+#include "camera.hpp"
+
+#define GLSL_VERSION    330
 
 //----------------------------------------------------------------------------------
 // Module Variables Definition (local)
@@ -35,7 +40,12 @@ static int finishScreen = 0;
 
 // Define the camera to look into our 3d world
 Camera3D camera = { 0 };
+int cameraMode = CAMERA_FIRST_PERSON;
+
 Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
+
+Model model;
+BoundingBox bounds;
 
 //----------------------------------------------------------------------------------
 // Gameplay Screen Functions Definition
@@ -47,12 +57,15 @@ void InitGameplayScreen(void)
     // TODO: Initialize GAMEPLAY screen variables here!
     framesCounter = 0;
     finishScreen = 0;
-
-    camera.position = { 0.0f, 10.0f, 10.0f };  // Camera position
+    
+    camera.position = { 0.0f, 7.0f, 7.0f };  // Camera position
     camera.target = { 0.0f, 0.0f, 0.0f };      // Camera looking at point
     camera.up = { 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
     camera.fovy = 45.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
+
+    model = LoadModel("resources/models/icosphere.gltf");                 // Load model
+    bounds = GetMeshBoundingBox(model.meshes[0]);   // Set model bounds
 }
 
 // Gameplay Screen Update logic
@@ -61,41 +74,37 @@ void UpdateGameplayScreen(void)
     // TODO: Update GAMEPLAY screen variables here!
 
     // Press enter or tap to change to ENDING screen
-    if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP))
-    {
+    if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
         finishScreen = 1;
         PlaySound(fxCoin);
     }
 
-    if (IsKeyDown(KEY_RIGHT)) camera.position.x += 1.0f;
-    if (IsKeyDown(KEY_LEFT)) camera.position.x -= 1.0f;
-    if (IsKeyDown(KEY_UP)) camera.position.y -= 1.0f;
-    if (IsKeyDown(KEY_DOWN)) camera.position.y += 1.0f;
+    // Switch camera projection
+    if (IsKeyPressed(KEY_P)) cameraMode = UpdateCameraView(&camera);
+
+    UpdateCamera(&camera, cameraMode);
 }
 
 // Gameplay Screen Draw logic
 void DrawGameplayScreen(void)
 {
     // TODO: Draw GAMEPLAY screen here!
+
     BeginMode3D(camera);
+        ClearBackground(RAYWHITE);
+        DrawModel(model, cubePosition, 1.0f, WHITE);
+        DrawBoundingBox(bounds, GREEN);
 
-    DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
+        DrawGrid(10, 1.0f);
 
-    // Vector3 cameraC = Vector3Add(Vector3Normalize(Vector3Subtract(cubePosition, camera.position)), camera.position);
-
-    // DrawSphere(cameraC, 0.2f, GREEN);
-
-    DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
-
-    DrawGrid(10, 1.0f);
-
-    EndMode3D();
+    EndMode3D(); 
 }
 
 // Gameplay Screen Unload logic
 void UnloadGameplayScreen(void)
 {
     // TODO: Unload GAMEPLAY screen variables here!
+    UnloadModel(model);         // Unload model
 }
 
 // Gameplay Screen should finish?
