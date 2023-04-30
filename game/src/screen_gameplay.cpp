@@ -30,7 +30,8 @@
 #include "screens.hpp"
 #include "camera.hpp"
 
-#define GLSL_VERSION    330
+#include <algorithm>
+#include <vector>
 
 //----------------------------------------------------------------------------------
 // Module Variables Definition (local)
@@ -38,14 +39,17 @@
 static int framesCounter = 0;
 static int finishScreen = 0;
 
-// Define the camera to look into our 3d world
-Camera3D camera = { 0 };
-int cameraMode = CAMERA_FIRST_PERSON;
+struct Projectile {
+    Vector2 position;
+    Vector2 direction;
+    float radius;
+};
 
-Vector3 cubePosition = { 0.0f, 1.0f, 0.0f };
+Camera2D camera;
 
-Model model;
-BoundingBox bounds;
+Rectangle player, background;
+
+std::vector<Projectile> projectiles;
 
 //----------------------------------------------------------------------------------
 // Gameplay Screen Functions Definition
@@ -54,14 +58,13 @@ BoundingBox bounds;
 // Gameplay Screen Initialization logic
 void InitGameplayScreen(void)
 {
-    // TODO: Initialize GAMEPLAY screen variables here!
+    // TODO: Initialize GAMEPLAY screen variables here
     framesCounter = 0;
     finishScreen = 0;
-
-    SetupCamera(&camera);
     
-    model = LoadModel("resources/models/icosphere.gltf");                   // Load model
-    bounds = GetMeshBoundingBox(model.meshes[0]);                                   // Set model bounds
+    camera = Camera2D{ {0.0f, 0.0f}, {0.0f, 0.0f}, 0.0f, 1.0f};
+    player = Rectangle{ 400, 200, 20, 20 };
+    background = Rectangle{ 0, 0, 800, 450 };
 }
 
 // Gameplay Screen Update logic
@@ -75,41 +78,70 @@ void UpdateGameplayScreen(void)
         PlaySound(fxCoin);
     }
 
-    // Switch camera projection
-    if (IsKeyPressed(KEY_P)) cameraMode = UpdateCameraView(&camera);
+    std::vector<Projectile>::iterator it;
+    for (int i = 0; i < projectiles.size(); i++) {     
+        projectiles[i].position = Vector2Add(projectiles[i].position, projectiles[i].direction);   
+    }
+    for (int i = 0; i < projectiles.size(); i++) {
+        if (0 - projectiles[i].radius > projectiles[i].position.x) {
+            it = projectiles.begin() + i;
+            projectiles.erase(it);
+            i--;
+        }
+        else if (projectiles[i].position.x > 800 + projectiles[i].radius) {
+            it = projectiles.begin() + i;
+            projectiles.erase(it);
+            i--;
+        }
+        else if (0 - projectiles[i].radius > projectiles[i].position.y) {
+            it = projectiles.begin() + i;
+            projectiles.erase(it);
+            i--;
+        }
+        else if (projectiles[i].position.y > 450 + projectiles[i].radius) {
+            it = projectiles.begin() + i;
+            projectiles.erase(it);
+            i--;
+        }
+    }
 
-    UpdateCamera(&camera, cameraMode);
+    if (IsKeyDown(KEY_W)) player.y -= 1;
+    if (IsKeyDown(KEY_S)) player.y += 1;
+    if (IsKeyDown(KEY_A)) player.x -= 1;
+    if (IsKeyDown(KEY_D)) player.x += 1;
+
+    if (IsKeyDown(KEY_E)) {
+        Projectile temp;
+        temp.position = { player.x + player.width/2, player.y + player.height/2 };
+        temp.direction = Vector2Normalize(Vector2Subtract(GetMousePosition(), temp.position));
+        temp.radius = 1.0f;
+
+        projectiles.push_back(temp);
+    }
 }
 
 // Gameplay Screen Draw logic
 void DrawGameplayScreen(void)
 {
     // TODO: Draw GAMEPLAY screen here!
+    BeginMode2D(camera);
     
-    BeginMode3D(camera);
-        ClearBackground(RAYWHITE);
-        
-        DrawPlane({ 0.0f, 0.0f, 0.0f }, { 100.0f, 100.0f }, { 144, 238, 144, 255 });
-        DrawSphere({ 0.0f, 0.0f, -75.0f }, 25.0f, YELLOW);
-        
-        DrawModel(model, cubePosition, 1.0f, LIGHTGRAY);
+        DrawRectangleRec(background, LIGHTGRAY);
+        DrawRectangleRec(player, GOLD);
+        DrawRectangleLinesEx(background, 10.0f, BLACK);
 
-        DrawCube({ 0.0f, 2.05f, -3.0f }, 6.1f, 4.0f, 0.1f, RED);
-        DrawCube({ -3.0f, 2.05f, 0.025f }, 0.1f, 4.0f, 5.95f, GREEN);
-        DrawCube({ 3.0f, 2.05f, 0.025f }, 0.1f, 4.0f, 5.95f, BLUE);
-        DrawCube({ 0.0f, 0.0f, 0.0f }, 6.1f, 0.1f, 6.1f, WHITE);
-        DrawCube({ 0.0f, 4.1f, 0.0f }, 6.1f, 0.1f, 6.1f, BLACK);
+        for (int i = 0; i < projectiles.size(); i++) {
+            DrawCircleV(projectiles[i].position, projectiles[i].radius, RED);                
+        }
 
-        // DrawGrid(10, 1.0f);
-
-    EndMode3D(); 
+    EndMode2D();
+    DrawText(TextFormat("Vector size: %04i", projectiles.size()), 400, 20, 20, GREEN);
 }
 
 // Gameplay Screen Unload logic
 void UnloadGameplayScreen(void)
 {
     // TODO: Unload GAMEPLAY screen variables here!
-    UnloadModel(model);         // Unload model
 }
 
 // Gameplay Screen should finish?
