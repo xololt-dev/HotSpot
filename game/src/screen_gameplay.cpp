@@ -47,7 +47,8 @@ struct Projectile {
 
 Camera2D camera;
 
-Rectangle player, background;
+Rectangle player, dummy;
+Rectangle background;
 
 std::vector<Projectile> projectiles;
 
@@ -64,6 +65,7 @@ void InitGameplayScreen(void)
     
     camera = Camera2D{ {0.0f, 0.0f}, {0.0f, 0.0f}, 0.0f, 1.0f};
     player = Rectangle{ 400, 200, 20, 20 };
+    dummy = Rectangle{ 600, 250, 20, 20 };
     background = Rectangle{ 0, 0, 800, 450 };
 }
 
@@ -78,9 +80,10 @@ void UpdateGameplayScreen(void)
         PlaySound(fxCoin);
     }
 
+    // Projectiles update
     std::vector<Projectile>::iterator it;
     for (int i = 0; i < projectiles.size(); i++) {     
-        projectiles[i].position = Vector2Add(projectiles[i].position, projectiles[i].direction);   
+        projectiles[i].position = Vector2Add(projectiles[i].position, projectiles[i].direction);
     }
     for (int i = 0; i < projectiles.size(); i++) {
         if (0 - projectiles[i].radius > projectiles[i].position.x) {
@@ -104,12 +107,34 @@ void UpdateGameplayScreen(void)
             i--;
         }
     }
+    float offsetX = 0, offsetY = 0;
+    // needs fixing
+    for (int i = 0; i < projectiles.size(); i++) {
+        if (CheckCollisionCircleRec(projectiles[i].position, projectiles[i].radius, dummy)) {
+            if ((projectiles[i].position.y >= (dummy.y + dummy.height)) || projectiles[i].position.y <= dummy.y) {
+                offsetY += projectiles[i].direction.y * 0.1;
+                projectiles[i].direction.y *= -1;
+            }
+            else if (projectiles[i].position.x >= (dummy.x + dummy.width) || projectiles[i].position.x <= dummy.x){
+                offsetX += projectiles[i].direction.x * 0.1;
+                projectiles[i].direction.x *= -1;
+            }
+            else {
+                offsetY += projectiles[i].direction.y * 0.07;
+                offsetX += projectiles[i].direction.x * 0.07;
+                projectiles[i].direction = Vector2Negate(projectiles[i].direction);
+            }
+        }
+    }
+    dummy.x += offsetX;
+    dummy.y += offsetY;
 
     if (IsKeyDown(KEY_W)) player.y -= 1;
     if (IsKeyDown(KEY_S)) player.y += 1;
     if (IsKeyDown(KEY_A)) player.x -= 1;
     if (IsKeyDown(KEY_D)) player.x += 1;
 
+    // Generate projectile
     if (IsKeyDown(KEY_E)) {
         Projectile temp;
         temp.position = { player.x + player.width/2, player.y + player.height/2 };
@@ -128,6 +153,7 @@ void DrawGameplayScreen(void)
     
         DrawRectangleRec(background, LIGHTGRAY);
         DrawRectangleRec(player, GOLD);
+        DrawRectangleRec(dummy, BROWN);
         DrawRectangleLinesEx(background, 10.0f, BLACK);
 
         for (int i = 0; i < projectiles.size(); i++) {
