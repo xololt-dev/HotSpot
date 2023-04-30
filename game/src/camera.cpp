@@ -6,7 +6,7 @@ void SetupCamera(Camera* camera) {
     camera->position = { 0.0f, 7.0f, 7.0f };             // Camera position
     camera->target = { 0.0f, 0.0f, 0.0f };               // Camera looking at point
     camera->up = { 0.0f, 1.0f, 0.0f };                   // Camera up vector (rotation towards target)
-    camera->fovy = 45.0f;                                // Camera field-of-view Y
+    camera->fovy = 60.0f;                                // Camera field-of-view Y
     camera->projection = CAMERA_PERSPECTIVE;             // Camera mode type
 }
 
