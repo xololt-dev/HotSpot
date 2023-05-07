@@ -53,15 +53,26 @@ struct Projectile {
 	float radius;
 };
 
+struct Entity {
+	Rectangle hitbox;
+	short health;
+	short resource;
+};
+
 bool hasMoved = 0;
 bool recalculateRays = 0;
-int numberRays = 180;
+int numberRays = 90;
 int numberBounces = 4;
+
+/*
 std::chrono::duration<double> collisionBoxyCzas = std::chrono::steady_clock::now() - std::chrono::steady_clock::now();
 std::chrono::duration<double> linieCzas = collisionBoxyCzas;
+std::chrono::duration<double> hybridCzas = collisionBoxyCzas;
+*/
 
 Camera2D camera;
 
+Entity player1;
 Rectangle player, dummy;
 Rectangle background, pillar;
 BoundingBox dummyBB, pillarBB;
@@ -69,6 +80,7 @@ BoundingBox dummyBB, pillarBB;
 std::vector<Projectile> projectiles;
 std::vector<Ray> rays;
 std::vector<Ray> bounces;
+std::vector<Rectangle> hitboxes;		// because boundingBoxes seem to scale badly for 2D, to be used later
 std::vector<BoundingBox> boundingBoxes;
 
 //----------------------------------------------------------------------------------
@@ -84,12 +96,17 @@ void InitGameplayScreen(void)
 	framesCounter = 0;
 	finishScreen = 0;
 	SetTargetFPS(60);
-
+	
 	screenHeight = GetRenderHeight();
 	screenWidth = GetRenderWidth();
 	
 	camera = Camera2D{ {0.0f, 0.0f}, {0.0f, 0.0f}, 0.0f, 1.0f };
-	player = Rectangle{ 400, 200, 20, 20 };
+	player = Rectangle{ 400.0f, 200.0f, 20.0f, 20.0f };
+	player1 = {
+		player,
+		100,
+		100
+	};
 	dummy = Rectangle{ 600, 250, 20, 20 };
 	background = Rectangle{ 0, 0, float(screenWidth), float(screenHeight) };
 	pillar = Rectangle{ 100, 100, 50, 50 };
@@ -98,7 +115,8 @@ void InitGameplayScreen(void)
 		for (int i = 0; i < numberRays; i++) {
 			Vector2 temp = { 0.0f, -1.0f };
 			temp = Vector2Rotate(temp, (360.0f / numberRays) * i * DEG2RAD);
-			rays.push_back(Ray{ {player.x + 10.0f, player.y + 10.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
+			rays.push_back(Ray{ {player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
+			// rays.push_back(Ray{ {player.x + 10.0f, player.y + 10.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
 		}
 	}
 	
@@ -118,6 +136,7 @@ void InitGameplayScreen(void)
 	}
 	
 	GenerateRayBounces();
+
 	/*
 	RayCollision temp;
 	float distance = 0.0f;
@@ -127,7 +146,7 @@ void InitGameplayScreen(void)
 	std::chrono::duration<double> czas = end - start;
 	
 	for (int x = 0; x < 20000; x++) {
-		start = start = std::chrono::steady_clock::now();
+		start = std::chrono::steady_clock::now();
 		for (int i = 0; i < rays.size(); i++) {
 			for (int j = 0; j < boundingBoxes.size(); j++) {
 				temp = GetRayCollisionBox(rays[i], boundingBoxes[j]);
@@ -171,8 +190,32 @@ void InitGameplayScreen(void)
 
 		czas = end - start;
 		linieCzas += czas;
+
+		start = std::chrono::steady_clock::now();
+		for (int i = 0; i < rays.size(); i++) {
+			for (int j = 0; j < 2; j++) {
+				temp = GetRayCollisionBox(rays[i], boundingBoxes[j]);
+				if (temp.hit && (distance > temp.distance)) {
+					distance = temp.distance;
+				}
+			}
+
+			Vector2 startRay = { rays[i].position.x, rays[i].position.y };
+			Vector2 endRay = { rays[i].direction.x, rays[i].direction.y };
+			Vector2 collision = { 0.0f, 0.0f };
+			endRay = Vector2Scale(endRay, 1000.0f);
+
+			CheckCollisionLines(startRay, endRay, { 10.0f, 10.0f }, { 10.0f, 440.0f }, &collision);
+			CheckCollisionLines(startRay, endRay, { 10.0f, 10.0f }, { 790.0f, 10.0f }, &collision);
+			CheckCollisionLines(startRay, endRay, { 10.0f, 440.0f }, { 790.0f, 440.0f }, &collision);
+			CheckCollisionLines(startRay, endRay, { 790.0f, 10.0f }, { 790.0f, 440.0f }, &collision);
+		}
+
+		end = std::chrono::high_resolution_clock::now();
+
+		czas = end - start;
+		hybridCzas += czas;
 	}
-	// std::cout << linieCzas.count() << " " << collisionBoxyCzas.count() << std::endl;
 	*/
 }
 
@@ -314,13 +357,16 @@ void UpdateGameplayScreen(void)
 		for (int i = 0; i < numberRays; i++) {
 			Vector2 temp = { 0.0f, -1.0f };
 			temp = Vector2Rotate(temp, (360.0f / numberRays) * i * DEG2RAD);
-			rays.push_back(Ray{ {player.x + 10.0f, player.y + 10.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
+			// rays.push_back(Ray{ {player.x + 10.0f, player.y + 10.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
+			rays.push_back(Ray{ {player1.hitbox.x + player1.hitbox.width, player1.hitbox.y + player1.hitbox.height, 0.0f}, { temp.x, temp.y, 0.0f } });
 		}
 	}
 
 	if (hasMoved) {
-		player.x += offsetX;
-		player.y += offsetY;
+		//player.x += offsetX;
+		//player.y += offsetY;
+		player1.hitbox.x += offsetX;
+		player1.hitbox.y += offsetY;
 
 		for (int i = 0; i < rays.size(); i++) {
 			rays[i].position.x += offsetX;
@@ -333,7 +379,8 @@ void UpdateGameplayScreen(void)
 	// Generate projectile
 	if (IsKeyDown(KEY_E)) {
 		Projectile temp;
-		temp.position = { player.x + player.width/2, player.y + player.height/2 };
+		// temp.position = { player.x + player.width/2, player.y + player.height/2 };
+		temp.position = { player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f };
 		temp.direction = Vector2Normalize(Vector2Subtract(GetMousePosition(), temp.position));
 		temp.radius = 1.0f;
 
@@ -394,7 +441,7 @@ void DrawGameplayScreen(void)
 			}
 		}
 
-		DrawRectangleRec(player, GOLD);
+		DrawRectangleRec(player1.hitbox, GOLD);
 		if (dummyHit) DrawRectangleRec(dummy, BROWN);
 		DrawRectangleLinesEx(background, 10.0f, BLACK);
 		DrawRectangleRec(pillar, BLACK);
@@ -402,14 +449,21 @@ void DrawGameplayScreen(void)
 		for (int i = 0; i < projectiles.size(); i++) {
 			DrawCircleV(projectiles[i].position, projectiles[i].radius, RED);                
 		}
+		
+		float healthFillup = player1.hitbox.width * (player1.health / 100.0f);
+		DrawRectangle(player1.hitbox.x, player1.hitbox.y - 7.5f, healthFillup, 5.0f, RED);
+		DrawRectangle(player1.hitbox.x + healthFillup, player1.hitbox.y - 7.5f, player1.hitbox.width - healthFillup, 5.0f, BLACK);
 
 	EndMode2D();
 	
-	DrawText(TextFormat("Vector size: %04i", projectiles.size()), 400, 20, 20, RED);
+	DrawText(TextFormat("Vector size: %i", projectiles.size()), 400, 20, 20, RED);
 	DrawText(TextFormat("Rays: %i", numberRays), 400, 40, 20, RED);
 	DrawText(TextFormat("Bounces: %i", numberBounces), 400, 60, 20, RED);
+	/*
 	DrawText(TextFormat("Boxy: %f", collisionBoxyCzas.count()), 400, 80, 20, RED);
 	DrawText(TextFormat("Linie: %f", linieCzas.count()), 400, 100, 20, RED);
+	DrawText(TextFormat("Hybryda: %f", hybridCzas.count()), 400, 120, 20, RED);
+	*/
 }
 
 // Gameplay Screen Unload logic
@@ -443,7 +497,7 @@ void GenerateRayBounces() {
 				RayCollision temp;
 				if (x > 0) temp = GetRayCollisionBox(bounces[i - amountOfRays], boundingBoxes[j]);
 				else temp = GetRayCollisionBox(rays[i], boundingBoxes[j]);
-
+				
 				if (temp.distance > 0.001f) {
 					if ((temp.hit && (temp.distance < finalCollisionForRay.distance)) || !finalCollisionForRay.hit) {
 						finalCollisionForRay = temp;
