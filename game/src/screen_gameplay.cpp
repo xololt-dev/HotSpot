@@ -118,7 +118,7 @@ void InitGameplayScreen(void)
 	}
 	
 	GenerateRayBounces();
-
+	/*
 	RayCollision temp;
 	float distance = 0.0f;
 	collisionBoxyCzas = linieCzas = std::chrono::duration<double>::zero();
@@ -173,6 +173,7 @@ void InitGameplayScreen(void)
 		linieCzas += czas;
 	}
 	// std::cout << linieCzas.count() << " " << collisionBoxyCzas.count() << std::endl;
+	*/
 }
 
 // Gameplay Screen Update logic
@@ -188,6 +189,25 @@ void UpdateGameplayScreen(void)
 		PlaySound(fxCoin);
 		return;
 	}
+
+	if (IsWindowResized()) {
+		screenWidth = GetScreenWidth();
+		screenHeight = GetScreenHeight();
+		background = Rectangle{ 0, 0, float(screenWidth), float(screenHeight) };
+
+		for (short i = 0; i < 4; i++) boundingBoxes.pop_back();
+		boundingBoxes.push_back(
+			BoundingBox{ { background.x, background.y, -1.0f } , { background.x + background.width, background.y + 10.0f, 1.0f } });
+		boundingBoxes.push_back(
+			BoundingBox{ { background.x, background.y, -1.0f } , { background.x + 10.0f, background.y + background.height, 1.0f } });
+		boundingBoxes.push_back(
+			BoundingBox{ { background.x + background.width - 10.0f, background.y, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
+		boundingBoxes.push_back(
+			BoundingBox{ { background.x, background.y + background.height - 10.0f, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
+
+		hasMoved = 1;
+	}
+
 
 	float offsetX = 0.0f, offsetY = 0.0f;
 	// Projectiles update
@@ -327,7 +347,7 @@ void DrawGameplayScreen(void)
 	// TODO: Draw GAMEPLAY screen here!
 	
 	BeginMode2D(camera);
-		ClearBackground(RAYWHITE);
+		ClearBackground(BLACK);
 
 		RayCollision temp, temp2;
 		Color bouncingColor = Color{ 245, 245, 245, 255 };
@@ -363,11 +383,9 @@ void DrawGameplayScreen(void)
 
 			for (int j = 1; j < amountBoxes; j++) {
 				temp2 = GetRayCollisionBox(bounces[i], boundingBoxes[j]);
-				// if (temp2.hit) {
+
 				if (temp2.hit && temp2.distance > 0.001f) {
-					if (!temp.hit || (temp2.distance < temp.distance))
-						// if(temp2.distance > 0.001f) 
-							temp = temp2;
+					if (!temp.hit || (temp2.distance < temp.distance)) temp = temp2;
 				}
 			}
 
