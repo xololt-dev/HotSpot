@@ -61,6 +61,8 @@ struct Entity {
 
 bool hasMoved = 0;
 bool recalculateRays = 0;
+bool showRays = 1;
+bool showBounces = 1;
 int numberRays = 90;
 int numberBounces = 4;
 
@@ -347,8 +349,10 @@ void UpdateGameplayScreen(void)
 		else {
 			numberBounces /= 2;
 			hasMoved = 1;
-		}		
+		}	
 	}
+	if (IsKeyPressed(KEY_R)) showRays = (showRays + 1) % 2;
+	if (IsKeyPressed(KEY_B)) showBounces = (showBounces + 1) % 2;
 
 	if (recalculateRays) {
 		rays.clear();
@@ -358,7 +362,7 @@ void UpdateGameplayScreen(void)
 			Vector2 temp = { 0.0f, -1.0f };
 			temp = Vector2Rotate(temp, (360.0f / numberRays) * i * DEG2RAD);
 			// rays.push_back(Ray{ {player.x + 10.0f, player.y + 10.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
-			rays.push_back(Ray{ {player1.hitbox.x + player1.hitbox.width, player1.hitbox.y + player1.hitbox.height, 0.0f}, { temp.x, temp.y, 0.0f } });
+			rays.push_back(Ray{ {player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
 		}
 	}
 
@@ -373,7 +377,7 @@ void UpdateGameplayScreen(void)
 			rays[i].position.y += offsetY;
 		}
 
-		GenerateRayBounces();
+		if (showBounces) GenerateRayBounces();
 	}
 
 	// Generate projectile
@@ -404,42 +408,46 @@ void DrawGameplayScreen(void)
 		unsigned short amountBoxes = boundingBoxes.size();
 		int amountBounces = bounces.size();
 		
-		for (int i = 0; i < amountRays; i++) {
-			temp = GetRayCollisionBox(rays[i], boundingBoxes[0]);
-			if (temp.hit) dummyHit = true;
+		if (showRays) {
+			for (int i = 0; i < amountRays; i++) {
+				temp = GetRayCollisionBox(rays[i], boundingBoxes[0]);
+				if (temp.hit) dummyHit = true;
 
-			for (int j = 1; j < boundingBoxes.size(); j++) {
-				temp2 = GetRayCollisionBox(rays[i], boundingBoxes[j]);
-				if (temp2.hit) {
-					if (!temp.hit || (temp2.distance < temp.distance)) temp = temp2;
+				for (int j = 1; j < boundingBoxes.size(); j++) {
+					temp2 = GetRayCollisionBox(rays[i], boundingBoxes[j]);
+					if (temp2.hit) {
+						if (!temp.hit || (temp2.distance < temp.distance)) temp = temp2;
+					}
+				}
+
+				if (temp.hit) {
+					DrawLineV({ rays[i].position.x, rays[i].position.y }, { temp.point.x, temp.point.y }, RAYWHITE);
+				}
+				else DrawRay(rays[i], RAYWHITE);
+			}
+		}		
+
+		if (showBounces) {
+			for (int i = 0; i < amountBounces; i++) {
+				if (i % amountRays == 0) {
+					bouncingColor.a *= 0.45f;
+				};
+				temp = GetRayCollisionBox(bounces[i], boundingBoxes[0]);
+				if (temp.hit) dummyHit = true;
+
+				for (int j = 1; j < amountBoxes; j++) {
+					temp2 = GetRayCollisionBox(bounces[i], boundingBoxes[j]);
+
+					if (temp2.hit && temp2.distance > 0.001f) {
+						if (!temp.hit || (temp2.distance < temp.distance)) temp = temp2;
+					}
+				}
+
+				if (temp.hit) {
+					DrawLine(bounces[i].position.x, bounces[i].position.y, temp.point.x, temp.point.y, bouncingColor);
 				}
 			}
-
-			if (temp.hit) {
-				DrawLineV({ rays[i].position.x, rays[i].position.y }, { temp.point.x, temp.point.y }, RAYWHITE);
-			}
-			else DrawRay(rays[i], RAYWHITE);
-		}
-
-		for (int i = 0; i < amountBounces; i++) {
-			if (i % amountRays == 0) {
-				bouncingColor.a *= 0.45f;
-			};
-			temp = GetRayCollisionBox(bounces[i], boundingBoxes[0]);
-			if (temp.hit) dummyHit = true;
-
-			for (int j = 1; j < amountBoxes; j++) {
-				temp2 = GetRayCollisionBox(bounces[i], boundingBoxes[j]);
-
-				if (temp2.hit && temp2.distance > 0.001f) {
-					if (!temp.hit || (temp2.distance < temp.distance)) temp = temp2;
-				}
-			}
-
-			if (temp.hit) {
-				DrawLine(bounces[i].position.x, bounces[i].position.y, temp.point.x, temp.point.y, bouncingColor);
-			}
-		}
+		}	
 
 		DrawRectangleRec(player1.hitbox, GOLD);
 		if (dummyHit) DrawRectangleRec(dummy, BROWN);
@@ -511,6 +519,10 @@ void GenerateRayBounces() {
 				Vector3 reflection = Vector3Reflect(
 					x == 0 ? rays[rayIndex].direction : bounces[rayIndex].direction,
 					finalCollisionForRay.normal);
+
+				reflection = Vector3Normalize(Vector3Add(
+					Vector3RotateByAxisAngle(finalCollisionForRay.normal, { 1,1,0 }, float(GetRandomValue(0, 90)) * DEG2RAD),
+					reflection));
 				reflection.z = 0.0f;
 				bounces.push_back(
 					Ray{ finalCollisionForRay.point, reflection });
