@@ -1,3 +1,11 @@
+# Założenia
+- mental asylum, white torture room escape
+- hallucinations
+- hack n slash
+- simple color palete
+- combos ?
+- to catch the psycho that did it to you
+
 # Raylib Setup using Premake5
 This is a simplified set of instructions for how to setup a project using premake.
 
