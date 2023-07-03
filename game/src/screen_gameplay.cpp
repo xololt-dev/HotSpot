@@ -23,6 +23,11 @@
 *
 **********************************************************************************************/
 
+// black
+// white
+// #bd9b57
+// #da2334
+
 #include "raylib.h"
 #include "raymath.h"
 #include "rcamera.h"
@@ -45,7 +50,7 @@ static int finishScreen = 0;
 static int screenHeight = 0;
 static int screenWidth = 0;
 
-static float diagonal = 0.1f / sqrt(2);
+static float diagonal = 0.1f / (float)sqrt(2);
 
 struct Projectile {
 	Vector2 position;
@@ -55,11 +60,13 @@ struct Projectile {
 
 struct Entity {
 	Rectangle hitbox;
+	Vector2 direction;
 	short health;
 	short resource;
 };
 
 bool hasMoved = 0;
+bool dummyHit = 0;
 bool recalculateRays = 0;
 bool showRays = 1;
 bool showBounces = 1;
@@ -106,12 +113,13 @@ void InitGameplayScreen(void)
 	player = Rectangle{ 400.0f, 200.0f, 20.0f, 20.0f };
 	player1 = {
 		player,
+		Vector2{1.0f, 0.0f},
 		100,
 		100
 	};
-	dummy = Rectangle{ 600, 250, 20, 20 };
-	background = Rectangle{ 0, 0, float(screenWidth), float(screenHeight) };
-	pillar = Rectangle{ 100, 100, 50, 50 };
+	dummy = Rectangle{ 600.0f, 250.0f, 20.0f, 20.0f };
+	background = Rectangle{ 0.0f, 0.0f, float(screenWidth), float(screenHeight) };
+	pillar = Rectangle{ 100.0f, 100.0f, 50.0f, 50.0f };
 
 	if (rays.size() == 0) {
 		for (int i = 0; i < numberRays; i++) {
@@ -226,6 +234,7 @@ void UpdateGameplayScreen(void)
 {
 	// TODO: Update GAMEPLAY screen variables here!
 	hasMoved = 0;
+	dummyHit = 0;
 	recalculateRays = 0;
 
 	// Press enter or tap to change to ENDING screen
@@ -328,6 +337,29 @@ void UpdateGameplayScreen(void)
 		hasMoved = 1;
 	}
 
+	// punching
+	if (IsKeyPressed(KEY_F)) {
+		// check if player is looking in any direction
+		if (!Vector2Equals(player1.direction, Vector2{ 0.0f, 0.0f })) {
+			// distance between player and dummy
+			Vector2 distanceV = Vector2Subtract({ player1.hitbox.x, player1.hitbox.y }, { dummy.x, dummy.y });
+			Vector2 multiplyResult = Vector2Multiply(distanceV, player1.direction);
+			distanceV = Vector2Normalize(Vector2Negate(distanceV));
+			
+			// if multiplication result is sub 0, it means that dummy is not hit by a punch
+			if (multiplyResult.x < 0 || multiplyResult.y < 0) {
+				dummy.x += distanceV.x;
+				dummy.y += distanceV.y;
+				boundingBoxes[0].min.x += distanceV.x;
+				boundingBoxes[0].min.y += distanceV.y;
+				boundingBoxes[0].max.x += distanceV.x;
+				boundingBoxes[0].max.y += distanceV.y;
+
+				dummyHit = 1;
+			}
+		}
+	}
+
 	if (IsKeyPressed(KEY_EQUAL)) {
 		if (IsKeyDown(KEY_LEFT_CONTROL)) {
 			if (numberRays < 45) numberRays *= 3;
@@ -361,7 +393,6 @@ void UpdateGameplayScreen(void)
 		for (int i = 0; i < numberRays; i++) {
 			Vector2 temp = { 0.0f, -1.0f };
 			temp = Vector2Rotate(temp, (360.0f / numberRays) * i * DEG2RAD);
-			// rays.push_back(Ray{ {player.x + 10.0f, player.y + 10.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
 			rays.push_back(Ray{ {player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
 		}
 	}
@@ -371,6 +402,7 @@ void UpdateGameplayScreen(void)
 		//player.y += offsetY;
 		player1.hitbox.x += offsetX;
 		player1.hitbox.y += offsetY;
+		player1.direction = { offsetX, offsetY };
 
 		for (int i = 0; i < rays.size(); i++) {
 			rays[i].position.x += offsetX;
@@ -383,7 +415,6 @@ void UpdateGameplayScreen(void)
 	// Generate projectile
 	if (IsKeyDown(KEY_E)) {
 		Projectile temp;
-		// temp.position = { player.x + player.width/2, player.y + player.height/2 };
 		temp.position = { player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f };
 		temp.direction = Vector2Normalize(Vector2Subtract(GetMousePosition(), temp.position));
 		temp.radius = 1.0f;
@@ -402,8 +433,8 @@ void DrawGameplayScreen(void)
 
 		RayCollision temp, temp2;
 		Color bouncingColor = Color{ 245, 245, 245, 255 };
+		
 		// 170, 74, 68
-		bool dummyHit = false;
 		unsigned short amountRays = rays.size();
 		unsigned short amountBoxes = boundingBoxes.size();
 		int amountBounces = bounces.size();
@@ -411,7 +442,6 @@ void DrawGameplayScreen(void)
 		if (showRays) {
 			for (int i = 0; i < amountRays; i++) {
 				temp = GetRayCollisionBox(rays[i], boundingBoxes[0]);
-				if (temp.hit) dummyHit = true;
 
 				for (int j = 1; j < boundingBoxes.size(); j++) {
 					temp2 = GetRayCollisionBox(rays[i], boundingBoxes[j]);
@@ -433,7 +463,6 @@ void DrawGameplayScreen(void)
 					bouncingColor.a *= 0.45f;
 				};
 				temp = GetRayCollisionBox(bounces[i], boundingBoxes[0]);
-				if (temp.hit) dummyHit = true;
 
 				for (int j = 1; j < amountBoxes; j++) {
 					temp2 = GetRayCollisionBox(bounces[i], boundingBoxes[j]);
@@ -448,9 +477,17 @@ void DrawGameplayScreen(void)
 				}
 			}
 		}	
+		
+		// DrawRectangleRec(player1.hitbox, GOLD);
+		Vector2 playerPos = { player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f };
+		DrawCircle(playerPos.x, playerPos.y, player1.hitbox.height / 2.0f, GOLD);
+		DrawCircle(player1.hitbox.x + player1.hitbox.width * 3.0f / 4.0f, player1.hitbox.y + player1.hitbox.height * 7.0f / 8.0f, 3.0f, RED);
+		DrawCircle(player1.hitbox.x + player1.hitbox.width / 4.0f, player1.hitbox.y + player1.hitbox.height * 7.0f / 8.0f, 3.0f, RED);
+		DrawLineV(playerPos, Vector2Add(playerPos, player1.direction), GREEN);
+		
+		if (dummyHit) DrawRectangleRec(dummy, RED);
+		else DrawRectangleRec(dummy, BROWN);
 
-		DrawRectangleRec(player1.hitbox, GOLD);
-		if (dummyHit) DrawRectangleRec(dummy, BROWN);
 		DrawRectangleLinesEx(background, 10.0f, BLACK);
 		DrawRectangleRec(pillar, BLACK);
 		
@@ -461,6 +498,11 @@ void DrawGameplayScreen(void)
 		float healthFillup = player1.hitbox.width * (player1.health / 100.0f);
 		DrawRectangle(player1.hitbox.x, player1.hitbox.y - 7.5f, healthFillup, 5.0f, RED);
 		DrawRectangle(player1.hitbox.x + healthFillup, player1.hitbox.y - 7.5f, player1.hitbox.width - healthFillup, 5.0f, BLACK);
+
+		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x, pillar.y, BLUE);
+		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x, pillar.y + pillar.height, BLUE);
+		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x + pillar.width, pillar.y, BLUE);
+		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x + pillar.width, pillar.y + pillar.height, BLUE);
 
 	EndMode2D();
 	
