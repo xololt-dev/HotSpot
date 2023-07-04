@@ -67,28 +67,16 @@ struct Entity {
 
 bool hasMoved = 0;
 bool dummyHit = 0;
-bool recalculateRays = 0;
-bool showRays = 1;
-bool showBounces = 1;
-int numberRays = 90;
-int numberBounces = 4;
-
-/*
-std::chrono::duration<double> collisionBoxyCzas = std::chrono::steady_clock::now() - std::chrono::steady_clock::now();
-std::chrono::duration<double> linieCzas = collisionBoxyCzas;
-std::chrono::duration<double> hybridCzas = collisionBoxyCzas;
-*/
 
 Camera2D camera;
 
 Entity player1;
+Texture2D playerTex;
 Rectangle player, dummy;
 Rectangle background, pillar;
 BoundingBox dummyBB, pillarBB;
 
 std::vector<Projectile> projectiles;
-std::vector<Ray> rays;
-std::vector<Ray> bounces;
 std::vector<Rectangle> hitboxes;		// because boundingBoxes seem to scale badly for 2D, to be used later
 std::vector<BoundingBox> boundingBoxes;
 
@@ -96,146 +84,50 @@ std::vector<BoundingBox> boundingBoxes;
 // Gameplay Screen Functions Definition
 //----------------------------------------------------------------------------------
 
-void GenerateRayBounces();
+void drawShadowLines(Vector2* playerPos, Rectangle* object, Color color);
 
 // Gameplay Screen Initialization logic
-void InitGameplayScreen(void)
-{
+void InitGameplayScreen(void) {
 	// TODO: Initialize GAMEPLAY screen variables here
 	framesCounter = 0;
 	finishScreen = 0;
-	SetTargetFPS(60);
-	
+	// SetTargetFPS(9999);
+	playerTex = LoadTexture("resources/textures/Sprite-0005.png");
+
 	screenHeight = GetRenderHeight();
 	screenWidth = GetRenderWidth();
 	
 	camera = Camera2D{ {0.0f, 0.0f}, {0.0f, 0.0f}, 0.0f, 1.0f };
-	player = Rectangle{ 400.0f, 200.0f, 20.0f, 20.0f };
+	player = Rectangle{ 0.5f * screenWidth, 4.0f / 9.0f * screenHeight, 32.0f, 32.0f };
 	player1 = {
 		player,
 		Vector2{1.0f, 0.0f},
 		100,
 		100
 	};
-	dummy = Rectangle{ 600.0f, 250.0f, 20.0f, 20.0f };
+	dummy = Rectangle{ 0.75f * screenWidth, 5.0f / 9.0f * screenHeight, 20.0f, 20.0f };
 	background = Rectangle{ 0.0f, 0.0f, float(screenWidth), float(screenHeight) };
-	pillar = Rectangle{ 100.0f, 100.0f, 50.0f, 50.0f };
-
-	if (rays.size() == 0) {
-		for (int i = 0; i < numberRays; i++) {
-			Vector2 temp = { 0.0f, -1.0f };
-			temp = Vector2Rotate(temp, (360.0f / numberRays) * i * DEG2RAD);
-			rays.push_back(Ray{ {player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
-			// rays.push_back(Ray{ {player.x + 10.0f, player.y + 10.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
-		}
-	}
+	pillar = Rectangle{ 0.125f * screenWidth, 0.125f * screenHeight, 50.0f, 50.0f };
 	
-	if (boundingBoxes.size() == 0) {
-		boundingBoxes.push_back(
-			BoundingBox{ { dummy.x, dummy.y, -1.0f }, { dummy.x + dummy.width, dummy.y + dummy.height, 1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { pillar.x, pillar.y, -1.0f } ,{ pillar.x + pillar.width, pillar.y + pillar.height, 1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x, background.y, -1.0f } , { background.x + background.width, background.y + 10.0f, 1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x, background.y, -1.0f } , { background.x + 10.0f, background.y + background.height, 1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x + background.width - 10.0f, background.y, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x, background.y + background.height - 10.0f, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
-	}
-	
-	GenerateRayBounces();
-
-	/*
-	RayCollision temp;
-	float distance = 0.0f;
-	collisionBoxyCzas = linieCzas = std::chrono::duration<double>::zero();
-	auto end = std::chrono::steady_clock::now();
-	auto start = std::chrono::steady_clock::now();
-	std::chrono::duration<double> czas = end - start;
-	
-	for (int x = 0; x < 20000; x++) {
-		start = std::chrono::steady_clock::now();
-		for (int i = 0; i < rays.size(); i++) {
-			for (int j = 0; j < boundingBoxes.size(); j++) {
-				temp = GetRayCollisionBox(rays[i], boundingBoxes[j]);
-				if (temp.hit && (distance > temp.distance)) {
-					distance = temp.distance;
-				}
-			}
-		}
-
-		end = std::chrono::high_resolution_clock::now();
-
-		czas = end - start;
-		// std::cout << czas.count() << std::endl;
-		collisionBoxyCzas += czas;
-
-		start = std::chrono::high_resolution_clock::now();
-
-		for (int i = 0; i < rays.size(); i++) {
-			Vector2 startRay = { rays[i].position.x, rays[i].position.y };
-			Vector2 endRay = { rays[i].direction.x, rays[i].direction.y };
-			Vector2 collision = { 0.0f, 0.0f };
-			endRay = Vector2Scale(endRay, 1000.0f);
-
-			CheckCollisionLines(startRay, endRay, { dummy.x, dummy.y }, { dummy.x, dummy.y + dummy.height }, &collision);
-			CheckCollisionLines(startRay, endRay, { dummy.x, dummy.y }, { dummy.x + dummy.width, dummy.y }, &collision);
-			CheckCollisionLines(startRay, endRay, { dummy.x, dummy.y + dummy.height }, { dummy.x + dummy.width, dummy.y + dummy.height }, &collision);
-			CheckCollisionLines(startRay, endRay, { dummy.x + dummy.width, dummy.y }, { dummy.x + dummy.width, dummy.y + dummy.height }, &collision);
-
-			CheckCollisionLines(startRay, endRay, { pillar.x, pillar.y }, { pillar.x, pillar.y + pillar.height }, &collision);
-			CheckCollisionLines(startRay, endRay, { pillar.x, pillar.y }, { pillar.x + pillar.width, pillar.y }, &collision);
-			CheckCollisionLines(startRay, endRay, { pillar.x, pillar.y + pillar.height }, { pillar.x + pillar.width, pillar.y + pillar.height }, &collision);
-			CheckCollisionLines(startRay, endRay, { pillar.x + pillar.width, pillar.y }, { pillar.x + pillar.width, pillar.y + pillar.height }, &collision);
-			
-			CheckCollisionLines(startRay, endRay, { 10.0f, 10.0f }, { 10.0f, 440.0f }, &collision);
-			CheckCollisionLines(startRay, endRay, {10.0f, 10.0f}, {790.0f, 10.0f}, &collision);
-			CheckCollisionLines(startRay, endRay, { 10.0f, 440.0f }, { 790.0f, 440.0f }, &collision);
-			CheckCollisionLines(startRay, endRay, { 790.0f, 10.0f }, { 790.0f, 440.0f }, &collision);
-		}
-
-		end = std::chrono::high_resolution_clock::now();
-
-		czas = end - start;
-		linieCzas += czas;
-
-		start = std::chrono::steady_clock::now();
-		for (int i = 0; i < rays.size(); i++) {
-			for (int j = 0; j < 2; j++) {
-				temp = GetRayCollisionBox(rays[i], boundingBoxes[j]);
-				if (temp.hit && (distance > temp.distance)) {
-					distance = temp.distance;
-				}
-			}
-
-			Vector2 startRay = { rays[i].position.x, rays[i].position.y };
-			Vector2 endRay = { rays[i].direction.x, rays[i].direction.y };
-			Vector2 collision = { 0.0f, 0.0f };
-			endRay = Vector2Scale(endRay, 1000.0f);
-
-			CheckCollisionLines(startRay, endRay, { 10.0f, 10.0f }, { 10.0f, 440.0f }, &collision);
-			CheckCollisionLines(startRay, endRay, { 10.0f, 10.0f }, { 790.0f, 10.0f }, &collision);
-			CheckCollisionLines(startRay, endRay, { 10.0f, 440.0f }, { 790.0f, 440.0f }, &collision);
-			CheckCollisionLines(startRay, endRay, { 790.0f, 10.0f }, { 790.0f, 440.0f }, &collision);
-		}
-
-		end = std::chrono::high_resolution_clock::now();
-
-		czas = end - start;
-		hybridCzas += czas;
-	}
-	*/
+	boundingBoxes.push_back(
+		BoundingBox{ { dummy.x, dummy.y, -1.0f }, { dummy.x + dummy.width, dummy.y + dummy.height, 1.0f } });
+	boundingBoxes.push_back(
+		BoundingBox{ { pillar.x, pillar.y, -1.0f } ,{ pillar.x + pillar.width, pillar.y + pillar.height, 1.0f } });
+	boundingBoxes.push_back(
+		BoundingBox{ { background.x, background.y, -1.0f } , { background.x + background.width, background.y + 10.0f, 1.0f } });
+	boundingBoxes.push_back(
+		BoundingBox{ { background.x, background.y, -1.0f } , { background.x + 10.0f, background.y + background.height, 1.0f } });
+	boundingBoxes.push_back(
+		BoundingBox{ { background.x + background.width - 10.0f, background.y, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
+	boundingBoxes.push_back(
+		BoundingBox{ { background.x, background.y + background.height - 10.0f, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
 }
 
 // Gameplay Screen Update logic
-void UpdateGameplayScreen(void)
-{
+void UpdateGameplayScreen(void) {
 	// TODO: Update GAMEPLAY screen variables here!
 	hasMoved = 0;
 	dummyHit = 0;
-	recalculateRays = 0;
 
 	// Press enter or tap to change to ENDING screen
 	if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
@@ -261,7 +153,6 @@ void UpdateGameplayScreen(void)
 
 		hasMoved = 1;
 	}
-
 
 	float offsetX = 0.0f, offsetY = 0.0f;
 	// Projectiles update
@@ -360,56 +251,10 @@ void UpdateGameplayScreen(void)
 		}
 	}
 
-	if (IsKeyPressed(KEY_EQUAL)) {
-		if (IsKeyDown(KEY_LEFT_CONTROL)) {
-			if (numberRays < 45) numberRays *= 3;
-			else numberRays *= 2;
-			recalculateRays = 1;
-		}
-		else {
-			if (!numberBounces) numberBounces = 1;
-			else numberBounces *= 2;
-			hasMoved = 1;
-		}
-	}
-	if (IsKeyPressed(KEY_MINUS)) {
-		if (IsKeyDown(KEY_LEFT_CONTROL)) {
-			if (numberRays > 45) numberRays /= 2;
-			else if (numberRays > 5) numberRays /= 3;
-			recalculateRays = 1;
-		}
-		else {
-			numberBounces /= 2;
-			hasMoved = 1;
-		}	
-	}
-	if (IsKeyPressed(KEY_R)) showRays = (showRays + 1) % 2;
-	if (IsKeyPressed(KEY_B)) showBounces = (showBounces + 1) % 2;
-
-	if (recalculateRays) {
-		rays.clear();
-		hasMoved = 1;
-
-		for (int i = 0; i < numberRays; i++) {
-			Vector2 temp = { 0.0f, -1.0f };
-			temp = Vector2Rotate(temp, (360.0f / numberRays) * i * DEG2RAD);
-			rays.push_back(Ray{ {player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, 0.0f}, { temp.x, temp.y, 0.0f } });
-		}
-	}
-
 	if (hasMoved) {
-		//player.x += offsetX;
-		//player.y += offsetY;
 		player1.hitbox.x += offsetX;
 		player1.hitbox.y += offsetY;
 		player1.direction = { offsetX, offsetY };
-
-		for (int i = 0; i < rays.size(); i++) {
-			rays[i].position.x += offsetX;
-			rays[i].position.y += offsetY;
-		}
-
-		if (showBounces) GenerateRayBounces();
 	}
 
 	// Generate projectile
@@ -424,72 +269,24 @@ void UpdateGameplayScreen(void)
 }
 
 // Gameplay Screen Draw logic
-void DrawGameplayScreen(void)
-{
+void DrawGameplayScreen(void) {
 	// TODO: Draw GAMEPLAY screen here!
 	
 	BeginMode2D(camera);
 		ClearBackground(BLACK);
 
-		RayCollision temp, temp2;
 		Color bouncingColor = Color{ 245, 245, 245, 255 };
-		
 		// 170, 74, 68
-		unsigned short amountRays = rays.size();
-		unsigned short amountBoxes = boundingBoxes.size();
-		int amountBounces = bounces.size();
-		
-		if (showRays) {
-			for (int i = 0; i < amountRays; i++) {
-				temp = GetRayCollisionBox(rays[i], boundingBoxes[0]);
 
-				for (int j = 1; j < boundingBoxes.size(); j++) {
-					temp2 = GetRayCollisionBox(rays[i], boundingBoxes[j]);
-					if (temp2.hit) {
-						if (!temp.hit || (temp2.distance < temp.distance)) temp = temp2;
-					}
-				}
-
-				if (temp.hit) {
-					DrawLineV({ rays[i].position.x, rays[i].position.y }, { temp.point.x, temp.point.y }, RAYWHITE);
-				}
-				else DrawRay(rays[i], RAYWHITE);
-			}
-		}		
-
-		if (showBounces) {
-			for (int i = 0; i < amountBounces; i++) {
-				if (i % amountRays == 0) {
-					bouncingColor.a *= 0.45f;
-				};
-				temp = GetRayCollisionBox(bounces[i], boundingBoxes[0]);
-
-				for (int j = 1; j < amountBoxes; j++) {
-					temp2 = GetRayCollisionBox(bounces[i], boundingBoxes[j]);
-
-					if (temp2.hit && temp2.distance > 0.001f) {
-						if (!temp.hit || (temp2.distance < temp.distance)) temp = temp2;
-					}
-				}
-
-				if (temp.hit) {
-					DrawLine(bounces[i].position.x, bounces[i].position.y, temp.point.x, temp.point.y, bouncingColor);
-				}
-			}
-		}	
-		
-		// DrawRectangleRec(player1.hitbox, GOLD);
 		Vector2 playerPos = { player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f };
-		DrawCircle(playerPos.x, playerPos.y, player1.hitbox.height / 2.0f, GOLD);
-		DrawCircle(player1.hitbox.x + player1.hitbox.width * 3.0f / 4.0f, player1.hitbox.y + player1.hitbox.height * 7.0f / 8.0f, 3.0f, RED);
-		DrawCircle(player1.hitbox.x + player1.hitbox.width / 4.0f, player1.hitbox.y + player1.hitbox.height * 7.0f / 8.0f, 3.0f, RED);
-		DrawLineV(playerPos, Vector2Add(playerPos, player1.direction), GREEN);
+		DrawTexture(playerTex, player1.hitbox.x, player1.hitbox.y, WHITE);
+		DrawLineV(playerPos, Vector2Add(playerPos, Vector2Scale(player1.direction,	20.0f)), GREEN);
 		
 		if (dummyHit) DrawRectangleRec(dummy, RED);
 		else DrawRectangleRec(dummy, BROWN);
 
-		DrawRectangleLinesEx(background, 10.0f, BLACK);
-		DrawRectangleRec(pillar, BLACK);
+		DrawRectangleLinesEx(background, 10.0f, WHITE);
+		DrawRectangleRec(pillar, WHITE);
 		
 		for (int i = 0; i < projectiles.size(); i++) {
 			DrawCircleV(projectiles[i].position, projectiles[i].radius, RED);                
@@ -499,16 +296,12 @@ void DrawGameplayScreen(void)
 		DrawRectangle(player1.hitbox.x, player1.hitbox.y - 7.5f, healthFillup, 5.0f, RED);
 		DrawRectangle(player1.hitbox.x + healthFillup, player1.hitbox.y - 7.5f, player1.hitbox.width - healthFillup, 5.0f, BLACK);
 
-		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x, pillar.y, BLUE);
-		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x, pillar.y + pillar.height, BLUE);
-		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x + pillar.width, pillar.y, BLUE);
-		DrawLine(player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f, pillar.x + pillar.width, pillar.y + pillar.height, BLUE);
+		drawShadowLines(&playerPos, &pillar, BLUE);
+		drawShadowLines(&playerPos, &dummy, YELLOW);
 
 	EndMode2D();
 	
-	DrawText(TextFormat("Vector size: %i", projectiles.size()), 400, 20, 20, RED);
-	DrawText(TextFormat("Rays: %i", numberRays), 400, 40, 20, RED);
-	DrawText(TextFormat("Bounces: %i", numberBounces), 400, 60, 20, RED);
+	DrawText(TextFormat("Vector size: %i", projectiles.size()), screenWidth / 2.0f, 20, 20, RED);
 	/*
 	DrawText(TextFormat("Boxy: %f", collisionBoxyCzas.count()), 400, 80, 20, RED);
 	DrawText(TextFormat("Linie: %f", linieCzas.count()), 400, 100, 20, RED);
@@ -517,58 +310,33 @@ void DrawGameplayScreen(void)
 }
 
 // Gameplay Screen Unload logic
-void UnloadGameplayScreen(void)
-{
+void UnloadGameplayScreen(void) {
 	// TODO: Unload GAMEPLAY screen variables here!
-	rays.clear();
-	bounces.clear();
+	boundingBoxes.clear();
+
+	UnloadTexture(playerTex);
 }
 
 // Gameplay Screen should finish?
-int FinishGameplayScreen(void)
-{
+int FinishGameplayScreen(void) {
 	return finishScreen;
 }
 
-// Generate ray bounces
-void GenerateRayBounces() {
-	bounces.clear();
+void drawShadowLines(Vector2* playerPos, Rectangle* object, Color color) {
+	Vector2 cornerPos = { object->x, object->y + object->height };
+	Vector2 currentPos = cornerPos;
+	float currentHigh = Vector2Distance(*playerPos, cornerPos);
+	float distance = 0;
 
-	if (!numberBounces) return;
+	for (int i = 1; i < 4; i++) {
+		cornerPos = { object->x + object->width * (i > 1), object->y + object->height * !(i % 2) };
+		distance = Vector2Distance(*playerPos, cornerPos);
 
-	int amountOfRays = rays.size();
-
-	for (int x = 0; x < numberBounces; x++) {
-		for (int i = x * amountOfRays; i < (x + 1) * amountOfRays; i++) {
-			RayCollision finalCollisionForRay = RayCollision{ 0, 0.0f, {0.0f,0.0f,0.0f}, {0.0f,0.0f,0.0f} };
-			int rayIndex = 0;
-
-			for (int j = 0; j < boundingBoxes.size(); j++) {
-				RayCollision temp;
-				if (x > 0) temp = GetRayCollisionBox(bounces[i - amountOfRays], boundingBoxes[j]);
-				else temp = GetRayCollisionBox(rays[i], boundingBoxes[j]);
-				
-				if (temp.distance > 0.001f) {
-					if ((temp.hit && (temp.distance < finalCollisionForRay.distance)) || !finalCollisionForRay.hit) {
-						finalCollisionForRay = temp;
-						rayIndex = i;
-						if (x) rayIndex -= amountOfRays;
-					}
-				}
-			}
-
-			if (finalCollisionForRay.hit) {
-				Vector3 reflection = Vector3Reflect(
-					x == 0 ? rays[rayIndex].direction : bounces[rayIndex].direction,
-					finalCollisionForRay.normal);
-
-				reflection = Vector3Normalize(Vector3Add(
-					Vector3RotateByAxisAngle(finalCollisionForRay.normal, { 1,1,0 }, float(GetRandomValue(0, 90)) * DEG2RAD),
-					reflection));
-				reflection.z = 0.0f;
-				bounces.push_back(
-					Ray{ finalCollisionForRay.point, reflection });
-			}
+		if (distance > currentHigh) {
+			currentHigh = distance;
+			DrawLineV(*playerPos, currentPos, color);
+			currentPos = cornerPos;
 		}
+		else DrawLineV(*playerPos, cornerPos, color);
 	}
 }
