@@ -50,41 +50,49 @@ static int finishScreen = 0;
 static int screenHeight = 0;
 static int screenWidth = 0;
 
-static float diagonal = 0.1f / (float)sqrt(2);
-
-struct Projectile {
+struct Car {
+	Rectangle hitbox;
 	Vector2 position;
 	Vector2 direction;
+	float speed;
+	float rotation;
+
+	Texture2D apperance;
+
+	float fuel;
+};
+
+struct Corner {
+	Vector2 position;
+	float width;
 	float radius;
+	float startAngle;
+	float endAngle;
 };
 
-struct Entity {
-	Rectangle hitbox;
-	Vector2 direction;
-	short health;
-	short resource;
+struct Track {
+	std::vector<Corner> corners;
+	std::vector<Rectangle> straights;
 };
-
-bool hasMoved = 0;
-bool dummyHit = 0;
 
 Camera2D camera;
 
-Entity player1;
-Texture2D playerTex;
-Rectangle player, dummy;
-Rectangle background, pillar;
-BoundingBox dummyBB, pillarBB;
+Car player;
+Track track;
 
-std::vector<Projectile> projectiles;
-std::vector<Rectangle> hitboxes;		// because boundingBoxes seem to scale badly for 2D, to be used later
-std::vector<BoundingBox> boundingBoxes;
+Rectangle background;
 
 //----------------------------------------------------------------------------------
 // Gameplay Screen Functions Definition
 //----------------------------------------------------------------------------------
 
+// Racing top down
+// ASM like upgrades
+// Creating a vehicle
+// Different tracks/planets(?)
+
 void drawShadowLines(Vector2* playerPos, Rectangle* object, Color color);
+void drawCorner(Corner* corner);
 
 // Gameplay Screen Initialization logic
 void InitGameplayScreen(void) {
@@ -92,42 +100,82 @@ void InitGameplayScreen(void) {
 	framesCounter = 0;
 	finishScreen = 0;
 	// SetTargetFPS(9999);
-	playerTex = LoadTexture("resources/textures/Sprite-0005.png");
 
 	screenHeight = GetRenderHeight();
 	screenWidth = GetRenderWidth();
 	
-	camera = Camera2D{ {0.0f, 0.0f}, {0.0f, 0.0f}, 0.0f, 1.0f };
-	player = Rectangle{ 0.5f * screenWidth, 4.0f / 9.0f * screenHeight, 32.0f, 32.0f };
-	player1 = {
-		player,
-		Vector2{1.0f, 0.0f},
-		100,
-		100
+	camera = Camera2D { 
+		{0.0f, 0.0f}, 
+		{0.0f, 0.0f}, 
+		0.0f, 
+		1.0f 
 	};
-	dummy = Rectangle{ 0.75f * screenWidth, 5.0f / 9.0f * screenHeight, 20.0f, 20.0f };
-	background = Rectangle{ 0.0f, 0.0f, float(screenWidth), float(screenHeight) };
-	pillar = Rectangle{ 0.125f * screenWidth, 0.125f * screenHeight, 50.0f, 50.0f };
-	
-	boundingBoxes.push_back(
-		BoundingBox{ { dummy.x, dummy.y, -1.0f }, { dummy.x + dummy.width, dummy.y + dummy.height, 1.0f } });
-	boundingBoxes.push_back(
-		BoundingBox{ { pillar.x, pillar.y, -1.0f } ,{ pillar.x + pillar.width, pillar.y + pillar.height, 1.0f } });
-	boundingBoxes.push_back(
-		BoundingBox{ { background.x, background.y, -1.0f } , { background.x + background.width, background.y + 10.0f, 1.0f } });
-	boundingBoxes.push_back(
-		BoundingBox{ { background.x, background.y, -1.0f } , { background.x + 10.0f, background.y + background.height, 1.0f } });
-	boundingBoxes.push_back(
-		BoundingBox{ { background.x + background.width - 10.0f, background.y, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
-	boundingBoxes.push_back(
-		BoundingBox{ { background.x, background.y + background.height - 10.0f, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
+	player = Car {
+		Rectangle { 
+			0.5f * screenWidth, 
+			4.0f / 9.0f * screenHeight, 
+			32.0f, 
+			32.0f 
+		},
+		Vector2 { 
+			0.5f * screenWidth + 16.0f, 
+			4.0f / 9.0f * screenHeight + 16.0f
+		},
+		Vector2 { 1.0f, 0.0f },
+		0.0f,
+		0.0f,
+		LoadTexture("resources/textures/Sprite-0005.png"),
+		100.0f
+	};
+	background = Rectangle { 
+		0.0f, 
+		0.0f,
+		float(screenWidth),
+		float(screenHeight)
+	};
+	track = Track {
+		track.corners = {
+			{
+				{125.0f, 125.0f},
+				75.0f,
+				90.0f,
+				180.0f,
+				270.0f
+			},
+			{
+				{325.0f, 325.0f},
+				75.0f,
+				90.0f,
+				0.0f,
+				90.0f
+			},
+			{
+				{225.0f, 225.0f},
+				75.0f,
+				190.0f,
+				90.0f,
+				180.0f
+			},
+			{
+				{225.0f, 225.0f},
+				75.0f,
+				190.0f,
+				270.0f,
+				360.0f
+			},
+		},
+		track.straights = {
+			{ 35.0f, 125.0f, 75.0f, 100.0f },
+			{ 340.0f, 225.0f, 75.0f, 100.0f },
+			{ 125.0f, 35.0f, 100.0f, 75.0f },
+			{ 225.0f, 340.0f, 100.0f, 75.0f },
+		}
+	};
 }
 
 // Gameplay Screen Update logic
 void UpdateGameplayScreen(void) {
 	// TODO: Update GAMEPLAY screen variables here!
-	hasMoved = 0;
-	dummyHit = 0;
 
 	// Press enter or tap to change to ENDING screen
 	if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
@@ -140,132 +188,38 @@ void UpdateGameplayScreen(void) {
 		screenWidth = GetScreenWidth();
 		screenHeight = GetScreenHeight();
 		background = Rectangle{ 0, 0, float(screenWidth), float(screenHeight) };
-
-		for (short i = 0; i < 4; i++) boundingBoxes.pop_back();
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x, background.y, -1.0f } , { background.x + background.width, background.y + 10.0f, 1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x, background.y, -1.0f } , { background.x + 10.0f, background.y + background.height, 1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x + background.width - 10.0f, background.y, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
-		boundingBoxes.push_back(
-			BoundingBox{ { background.x, background.y + background.height - 10.0f, 1.0f } , { background.x + background.width, background.y + background.height, -1.0f } });
-
-		hasMoved = 1;
 	}
-
-	float offsetX = 0.0f, offsetY = 0.0f;
-	// Projectiles update
-	if (projectiles.size() > 0) {
-		std::vector<Projectile>::iterator it;
-		for (int i = 0; i < projectiles.size(); i++) {
-			projectiles[i].position = Vector2Add(projectiles[i].position, projectiles[i].direction);
-		}
-		for (int i = 0; i < projectiles.size(); i++) {
-			if (0 - projectiles[i].radius > projectiles[i].position.x) {
-				it = projectiles.begin() + i;
-				projectiles.erase(it);
-				i--;
-			}
-			else if (projectiles[i].position.x > screenWidth + projectiles[i].radius) {
-				it = projectiles.begin() + i;
-				projectiles.erase(it);
-				i--;
-			}
-			else if (0 - projectiles[i].radius > projectiles[i].position.y) {
-				it = projectiles.begin() + i;
-				projectiles.erase(it);
-				i--;
-			}
-			else if (projectiles[i].position.y > screenHeight + projectiles[i].radius) {
-				it = projectiles.begin() + i;
-				projectiles.erase(it);
-				i--;
-			}
-		}
-		
-		// needs fixing
-		for (int i = 0; i < projectiles.size(); i++) {
-			if (CheckCollisionCircleRec(projectiles[i].position, projectiles[i].radius, dummy)) {
-				if ((projectiles[i].position.y >= (dummy.y + dummy.height)) || projectiles[i].position.y <= dummy.y) {
-					offsetY += projectiles[i].direction.y * 0.1f;
-					projectiles[i].direction.y *= -1;
-				}
-				else if (projectiles[i].position.x >= (dummy.x + dummy.width) || projectiles[i].position.x <= dummy.x) {
-					offsetX += projectiles[i].direction.x * 0.1f;
-					projectiles[i].direction.x *= -1;
-				}
-				else {
-					offsetY += projectiles[i].direction.y * diagonal;
-					offsetX += projectiles[i].direction.x * diagonal;
-					projectiles[i].direction = Vector2Negate(projectiles[i].direction);
-				}
-			}
-		}
-		dummy.x += offsetX;
-		dummy.y += offsetY;
-		boundingBoxes[0].min.x += offsetX;
-		boundingBoxes[0].min.y += offsetY;
-		boundingBoxes[0].max.x += offsetX;
-		boundingBoxes[0].max.y += offsetY;
-	}	
 	
-	offsetX = offsetY = 0.0f;
+	/*
+	float offsetX = 0.0f, offsetY = 0.0f;
+
 	if (IsKeyDown(KEY_W)) {
 		offsetY -= 1.0f;
-		hasMoved = 1;
 	}
 	if (IsKeyDown(KEY_S)) {
 		offsetY += 1.0f;
-		hasMoved = 1;
 	}
 	if (IsKeyDown(KEY_A)) {
 		offsetX -= 1.0f;
-		hasMoved = 1;
 	}
 	if (IsKeyDown(KEY_D)) {
 		offsetX += 1.0f;
-		hasMoved = 1;
 	}
+	*/
+	
+	player.speed += 0.0166f * (IsKeyDown(KEY_W) - IsKeyDown(KEY_S));
+	player.speed *= 0.99f;
+	player.speed = Clamp(player.speed, -1.0f, 1.0f);
 
-	// punching
-	if (IsKeyPressed(KEY_F)) {
-		// check if player is looking in any direction
-		if (!Vector2Equals(player1.direction, Vector2{ 0.0f, 0.0f })) {
-			// distance between player and dummy
-			Vector2 distanceV = Vector2Subtract({ player1.hitbox.x, player1.hitbox.y }, { dummy.x, dummy.y });
-			Vector2 multiplyResult = Vector2Multiply(distanceV, player1.direction);
-			distanceV = Vector2Normalize(Vector2Negate(distanceV));
-			
-			// if multiplication result is sub 0, it means that dummy is not hit by a punch
-			if (multiplyResult.x < 0 || multiplyResult.y < 0) {
-				dummy.x += distanceV.x;
-				dummy.y += distanceV.y;
-				boundingBoxes[0].min.x += distanceV.x;
-				boundingBoxes[0].min.y += distanceV.y;
-				boundingBoxes[0].max.x += distanceV.x;
-				boundingBoxes[0].max.y += distanceV.y;
+	player.rotation += 0.001f * (IsKeyDown(KEY_D) - IsKeyDown(KEY_A));
+	player.rotation *= 0.975f;
+	player.rotation = Clamp(player.rotation, -75.0f, 75.0f);
 
-				dummyHit = 1;
-			}
-		}
-	}
-
-	if (hasMoved) {
-		player1.hitbox.x += offsetX;
-		player1.hitbox.y += offsetY;
-		player1.direction = { offsetX, offsetY };
-	}
-
-	// Generate projectile
-	if (IsKeyDown(KEY_E)) {
-		Projectile temp;
-		temp.position = { player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f };
-		temp.direction = Vector2Normalize(Vector2Subtract(GetMousePosition(), temp.position));
-		temp.radius = 1.0f;
-
-		projectiles.push_back(temp);
-	}
+	player.direction = Vector2Rotate(player.direction, player.rotation);
+	
+	player.hitbox.x += player.direction.x * player.speed;
+	player.hitbox.y += player.direction.y * player.speed;
+	player.position = Vector2Add(player.position, Vector2Scale(player.direction, player.speed));
 }
 
 // Gameplay Screen Draw logic
@@ -273,35 +227,36 @@ void DrawGameplayScreen(void) {
 	// TODO: Draw GAMEPLAY screen here!
 	
 	BeginMode2D(camera);
-		ClearBackground(BLACK);
 
-		Color bouncingColor = Color{ 245, 245, 245, 255 };
-		// 170, 74, 68
+	ClearBackground(BLACK);
 
-		Vector2 playerPos = { player1.hitbox.x + player1.hitbox.width / 2.0f, player1.hitbox.y + player1.hitbox.height / 2.0f };
-		DrawTexture(playerTex, player1.hitbox.x, player1.hitbox.y, WHITE);
-		DrawLineV(playerPos, Vector2Add(playerPos, Vector2Scale(player1.direction,	20.0f)), GREEN);
+	Color bouncingColor = Color{ 245, 245, 245, 255 };
+	// 170, 74, 68
+
+	// Track
+	for (int i = 0; i < track.corners.size(); i++) {
+		drawCorner(&track.corners[i]);
+	}
+	for (int i = 0; i < track.straights.size(); i++) {
+		DrawRectangle(track.straights[i].x,
+			track.straights[i].y, 
+			track.straights[i].width,
+			track.straights[i].height,
+			GRAY
+		);
+	}
+
+	DrawTexture(player.apperance, player.hitbox.x, player.hitbox.y, WHITE);
+	DrawLineV(player.position, Vector2Add(player.position, Vector2Scale(player.direction, player.speed * 20.0f)), GREEN);
+
+	DrawRectangleLinesEx(background, 10.0f, WHITE);
 		
-		if (dummyHit) DrawRectangleRec(dummy, RED);
-		else DrawRectangleRec(dummy, BROWN);
-
-		DrawRectangleLinesEx(background, 10.0f, WHITE);
-		DrawRectangleRec(pillar, WHITE);
-		
-		for (int i = 0; i < projectiles.size(); i++) {
-			DrawCircleV(projectiles[i].position, projectiles[i].radius, RED);                
-		}
-		
-		float healthFillup = player1.hitbox.width * (player1.health / 100.0f);
-		DrawRectangle(player1.hitbox.x, player1.hitbox.y - 7.5f, healthFillup, 5.0f, RED);
-		DrawRectangle(player1.hitbox.x + healthFillup, player1.hitbox.y - 7.5f, player1.hitbox.width - healthFillup, 5.0f, BLACK);
-
-		drawShadowLines(&playerPos, &pillar, BLUE);
-		drawShadowLines(&playerPos, &dummy, YELLOW);
+	float healthFillup = player.hitbox.width * (player.fuel / 100.0f);
+	DrawRectangle(player.hitbox.x, player.hitbox.y - 7.5f, healthFillup, 5.0f, RED);
+	DrawRectangle(player.hitbox.x + healthFillup, player.hitbox.y - 7.5f, player.hitbox.width - healthFillup, 5.0f, BLACK);
 
 	EndMode2D();
-	
-	DrawText(TextFormat("Vector size: %i", projectiles.size()), screenWidth / 2.0f, 20, 20, RED);
+
 	/*
 	DrawText(TextFormat("Boxy: %f", collisionBoxyCzas.count()), 400, 80, 20, RED);
 	DrawText(TextFormat("Linie: %f", linieCzas.count()), 400, 100, 20, RED);
@@ -312,14 +267,17 @@ void DrawGameplayScreen(void) {
 // Gameplay Screen Unload logic
 void UnloadGameplayScreen(void) {
 	// TODO: Unload GAMEPLAY screen variables here!
-	boundingBoxes.clear();
-
-	UnloadTexture(playerTex);
+	UnloadTexture(player.apperance);
 }
 
 // Gameplay Screen should finish?
 int FinishGameplayScreen(void) {
 	return finishScreen;
+}
+
+void drawCorner(Corner* corner) {
+	DrawCircleSector(corner->position, corner->radius, corner->startAngle, corner->endAngle, corner->radius / 7.5f, GRAY);
+	DrawCircleSector(corner->position, corner->radius - corner->width, corner->startAngle, corner->endAngle, corner->width / 7.5f, BLACK);
 }
 
 void drawShadowLines(Vector2* playerPos, Rectangle* object, Color color) {
