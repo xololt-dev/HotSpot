@@ -1,0 +1,65 @@
+{
+  "id": 1,
+  "corners": {
+    "amount": 4,
+    "one": {
+      "x": 125,
+      "y": 125,
+      "width": 75,
+      "radius": 90,
+      "startAngle": 180,
+      "endAngle": 270
+    },
+    "two": {
+      "x": 325,
+      "y": 325,
+      "width": 75,
+      "radius": 90,
+      "startAngle": 0,
+      "endAngle": 90
+    },
+    "three": {
+      "x": 225,
+      "y": 225,
+      "width": 75,
+      "radius": 190,
+      "startAngle": 90,
+      "endAngle": 180
+    },
+    "four": {
+      "x": 225,
+      "y": 225,
+      "width": 75,
+      "radius": 190,
+      "startAngle": 270,
+      "endAngle": 360
+    }
+  },
+  "straights": {
+    "amount": 4,
+    "one": {
+      "x": 35,
+      "y": 125,
+      "width": 75,
+      "height": 100
+    },
+    "two": {
+      "x": 340,
+      "y": 225,
+      "width": 75,
+      "height": 100
+    },
+    "three": {
+      "x": 125,
+      "y": 35,
+      "width": 100,
+      "height": 75
+    },
+    "four": {
+      "x": 225,
+      "y": 340,
+      "width": 100,
+      "height": 75
+    }
+  }
+}

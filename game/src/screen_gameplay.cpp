@@ -40,6 +40,7 @@
 #include <chrono>
 
 #include <iostream>
+#include <fstream>
 
 //----------------------------------------------------------------------------------
 // Module Variables Definition (local)
@@ -104,6 +105,110 @@ void InitGameplayScreen(void) {
 	screenHeight = GetRenderHeight();
 	screenWidth = GetRenderWidth();
 	
+	std::fstream track1;
+	track1.open("resources/tracks/track1.json", std::ios::in);
+	if (track1.good()) {
+		std::string tempS;
+		int tempInt;
+
+		while (tempS != "\"one\":" && !track1.eof()) {
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+		}
+		Corner tempCorner;
+
+		for (int i = 0; i < 4; i++) {
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+
+			track1 >> tempCorner.position.x;
+			std::cout << tempCorner.position.x << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempCorner.position.y;
+			std::cout << tempCorner.position.y << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempCorner.width;
+			std::cout << tempCorner.width << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempCorner.radius;
+			std::cout << tempCorner.radius << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempCorner.startAngle;
+			std::cout << tempCorner.startAngle << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempCorner.endAngle;
+			std::cout << tempCorner.endAngle << "\n";
+
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+
+			track.corners.push_back(tempCorner);
+		}
+
+		while (tempS != "\"one\":" && !track1.eof()) {
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+		}
+
+		Rectangle tempRec;
+		for (int i = 0; i < 4; i++) {
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+
+			track1 >> tempRec.x;
+			std::cout << tempRec.x << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempRec.y;
+			std::cout << tempRec.y << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempRec.width;
+			std::cout << tempRec.width << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempRec.height;
+			std::cout << tempRec.height << "\n";
+
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+			track1 >> tempS;
+			std::cout << tempS << "\n";
+
+			track.straights.push_back(tempRec);
+		}
+
+		track1.close();
+	}
+	else std::cout << "Plik nie otworzony";
+
 	camera = Camera2D { 
 		{0.0f, 0.0f}, 
 		{0.0f, 0.0f}, 
@@ -133,6 +238,7 @@ void InitGameplayScreen(void) {
 		float(screenWidth),
 		float(screenHeight)
 	};
+	/*
 	track = Track {
 		track.corners = {
 			{
@@ -170,7 +276,14 @@ void InitGameplayScreen(void) {
 			{ 125.0f, 35.0f, 100.0f, 75.0f },
 			{ 225.0f, 340.0f, 100.0f, 75.0f },
 		}
-	};
+	};*/
+	/*
+	track.straights = {
+			{ 35.0f, 125.0f, 75.0f, 100.0f },
+			{ 340.0f, 225.0f, 75.0f, 100.0f },
+			{ 125.0f, 35.0f, 100.0f, 75.0f },
+			{ 225.0f, 340.0f, 100.0f, 75.0f },
+	};*/
 }
 
 // Gameplay Screen Update logic
@@ -206,9 +319,29 @@ void UpdateGameplayScreen(void) {
 		offsetX += 1.0f;
 	}
 	*/
-	
-	player.speed += 0.0166f * (IsKeyDown(KEY_W) - IsKeyDown(KEY_S));
+	float speedIncrease = 0.0166f / 2.0f * (IsKeyDown(KEY_W) - IsKeyDown(KEY_S));
 	player.speed *= 0.99f;
+	for (int i = 0; i < track.straights.size() + track.corners.size(); i++) {
+		if (i < track.straights.size()) {
+			if (CheckCollisionRecs(track.straights[i], player.hitbox)) {
+				speedIncrease *= 2.0f;
+				break;
+			}
+		}
+		else {
+			if (CheckCollisionRecs(
+				Rectangle{
+					track.corners[i - track.straights.size()].position.x + track.corners[i - track.straights.size()].radius * (track.corners[i - track.straights.size()].startAngle == 0 || track.corners[i - track.straights.size()].startAngle == 90),
+					track.corners[i - track.straights.size()].position.y + track.corners[i - track.straights.size()].radius * (track.corners[i - track.straights.size()].startAngle == 0 || track.corners[i - track.straights.size()].startAngle == 270),
+					track.corners[i - track.straights.size()].width,
+					track.corners[i - track.straights.size()].width },
+					player.hitbox)) {
+				speedIncrease *= 2.0f;
+				break;
+			}
+		}
+	}
+	player.speed += speedIncrease;
 	player.speed = Clamp(player.speed, -1.0f, 1.0f);
 
 	player.rotation += 0.001f * (IsKeyDown(KEY_D) - IsKeyDown(KEY_A));
@@ -225,7 +358,6 @@ void UpdateGameplayScreen(void) {
 // Gameplay Screen Draw logic
 void DrawGameplayScreen(void) {
 	// TODO: Draw GAMEPLAY screen here!
-	
 	BeginMode2D(camera);
 
 	ClearBackground(BLACK);
