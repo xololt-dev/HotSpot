@@ -61,6 +61,7 @@ int main(void)
     //---------------------------------------------------------
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
+    SetExitKey(KEY_ESCAPE);
     InitWindow(screenWidth, screenHeight, "raylib game template");
 
     InitAudioDevice();      // Initialize audio device
