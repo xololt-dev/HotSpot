@@ -113,94 +113,58 @@ void InitGameplayScreen(void) {
 
 		while (tempS != "\"one\":" && !track1.eof()) {
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 		}
 		Corner tempCorner;
 
 		for (int i = 0; i < 4; i++) {
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 
 			track1 >> tempCorner.position.x;
-			std::cout << tempCorner.position.x << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempCorner.position.y;
-			std::cout << tempCorner.position.y << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempCorner.width;
-			std::cout << tempCorner.width << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempCorner.radius;
-			std::cout << tempCorner.radius << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempCorner.startAngle;
-			std::cout << tempCorner.startAngle << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempCorner.endAngle;
-			std::cout << tempCorner.endAngle << "\n";
 
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 
 			track.corners.push_back(tempCorner);
 		}
 
 		while (tempS != "\"one\":" && !track1.eof()) {
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 		}
 
 		Rectangle tempRec;
 		for (int i = 0; i < 4; i++) {
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 
 			track1 >> tempRec.x;
-			std::cout << tempRec.x << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempRec.y;
-			std::cout << tempRec.y << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempRec.width;
-			std::cout << tempRec.width << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempRec.height;
-			std::cout << tempRec.height << "\n";
 
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 			track1 >> tempS;
-			std::cout << tempS << "\n";
 
 			track.straights.push_back(tempRec);
 		}
@@ -321,27 +285,30 @@ void UpdateGameplayScreen(void) {
 	*/
 	float speedIncrease = 0.0166f / 2.0f * (IsKeyDown(KEY_W) - IsKeyDown(KEY_S));
 	player.speed *= 0.99f;
-	for (int i = 0; i < track.straights.size() + track.corners.size(); i++) {
+	bool onTrack = 0;
+	for (int i = 0; i < track.straights.size(); i++) {
 		if (i < track.straights.size()) {
 			if (CheckCollisionRecs(track.straights[i], player.hitbox)) {
-				speedIncrease *= 2.0f;
-				break;
-			}
-		}
-		else {
-			if (CheckCollisionRecs(
-				Rectangle{
-					track.corners[i - track.straights.size()].position.x + track.corners[i - track.straights.size()].radius * (track.corners[i - track.straights.size()].startAngle == 0 || track.corners[i - track.straights.size()].startAngle == 90),
-					track.corners[i - track.straights.size()].position.y + track.corners[i - track.straights.size()].radius * (track.corners[i - track.straights.size()].startAngle == 0 || track.corners[i - track.straights.size()].startAngle == 270),
-					track.corners[i - track.straights.size()].width,
-					track.corners[i - track.straights.size()].width },
-					player.hitbox)) {
-				speedIncrease *= 2.0f;
+				onTrack = 1;
 				break;
 			}
 		}
 	}
-	player.speed += speedIncrease;
+	if (!onTrack) {
+		for (int i = 0; i < track.corners.size(); i++) {
+			if (CheckCollisionRecs(
+				Rectangle{
+					track.corners[i].position.x - track.corners[i].radius * !(track.corners[i].startAngle == 0 || track.corners[i].startAngle == 90),
+					track.corners[i].position.y - track.corners[i].radius * !(track.corners[i].startAngle == 0 || track.corners[i].startAngle == 270),
+					track.corners[i].radius,
+					track.corners[i].radius },
+					player.hitbox)) {
+				onTrack = 1;
+				break;
+			}
+		}
+	}
+	player.speed += speedIncrease + speedIncrease * onTrack;
 	player.speed = Clamp(player.speed, -1.0f, 1.0f);
 
 	player.rotation += 0.001f * (IsKeyDown(KEY_D) - IsKeyDown(KEY_A));
@@ -382,7 +349,15 @@ void DrawGameplayScreen(void) {
 	DrawLineV(player.position, Vector2Add(player.position, Vector2Scale(player.direction, player.speed * 20.0f)), GREEN);
 
 	DrawRectangleLinesEx(background, 10.0f, WHITE);
-		
+	/*
+	for (int i = 0; i < track.corners.size(); i++) {
+		DrawRectangleLinesEx(Rectangle{
+					track.corners[i].position.x - track.corners[i].radius * !(track.corners[i].startAngle == 0 || track.corners[i].startAngle == 90),
+					track.corners[i].position.y - track.corners[i].radius * !(track.corners[i].startAngle == 0 || track.corners[i].startAngle == 270),
+					track.corners[i].radius,
+					track.corners[i].radius }, 10.0f, WHITE);
+	}
+	*/
 	float healthFillup = player.hitbox.width * (player.fuel / 100.0f);
 	DrawRectangle(player.hitbox.x, player.hitbox.y - 7.5f, healthFillup, 5.0f, RED);
 	DrawRectangle(player.hitbox.x + healthFillup, player.hitbox.y - 7.5f, player.hitbox.width - healthFillup, 5.0f, BLACK);
