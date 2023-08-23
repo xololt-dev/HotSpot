@@ -31,9 +31,12 @@
 #include "raylib.h"
 #include "raymath.h"
 #include "rcamera.h"
+// #include "rlImGui.h"
 
 #include "screens.hpp"
 #include "camera.hpp"
+
+#include "objects.hpp"
 
 #include <algorithm>
 #include <vector>
@@ -50,6 +53,8 @@ static int finishScreen = 0;
 
 static int screenHeight = 0;
 static int screenWidth = 0;
+
+WorldObject world;
 
 struct Car {
 	Rectangle hitbox;
@@ -100,7 +105,6 @@ void InitGameplayScreen(void) {
 	// TODO: Initialize GAMEPLAY screen variables here
 	framesCounter = 0;
 	finishScreen = 0;
-	// SetTargetFPS(9999);
 
 	screenHeight = GetRenderHeight();
 	screenWidth = GetRenderWidth();
@@ -248,14 +252,24 @@ void InitGameplayScreen(void) {
 			{ 125.0f, 35.0f, 100.0f, 75.0f },
 			{ 225.0f, 340.0f, 100.0f, 75.0f },
 	};*/
+
+	world.initialize();
+
+	//rlImGuiSetup(true);
+
+	SetTargetFPS(60);
 }
 
 // Gameplay Screen Update logic
 void UpdateGameplayScreen(void) {
 	// TODO: Update GAMEPLAY screen variables here!
+	if (!world.gameObjectsArray.size()) {
+		world.initialize();
+		// rlImGuiSetup(true);
+	}
 
 	// Press enter or tap to change to ENDING screen
-	if (IsKeyPressed(KEY_ENTER) || IsGestureDetected(GESTURE_TAP)) {
+	if (IsKeyPressed(KEY_ENTER) /* || IsGestureDetected(GESTURE_TAP)*/) {
 		finishScreen = 1;
 		PlaySound(fxCoin);
 		return;
@@ -267,6 +281,8 @@ void UpdateGameplayScreen(void) {
 		background = Rectangle{ 0, 0, float(screenWidth), float(screenHeight) };
 	}
 	
+	world.update();
+
 	/*
 	float offsetX = 0.0f, offsetY = 0.0f;
 
@@ -348,7 +364,7 @@ void DrawGameplayScreen(void) {
 	DrawTexture(player.apperance, player.hitbox.x, player.hitbox.y, WHITE);
 	DrawLineV(player.position, Vector2Add(player.position, Vector2Scale(player.direction, player.speed * 20.0f)), GREEN);
 
-	DrawRectangleLinesEx(background, 10.0f, WHITE);
+	// DrawRectangleLinesEx(background, 10.0f, WHITE);
 	/*
 	for (int i = 0; i < track.corners.size(); i++) {
 		DrawRectangleLinesEx(Rectangle{
@@ -362,8 +378,20 @@ void DrawGameplayScreen(void) {
 	DrawRectangle(player.hitbox.x, player.hitbox.y - 7.5f, healthFillup, 5.0f, RED);
 	DrawRectangle(player.hitbox.x + healthFillup, player.hitbox.y - 7.5f, player.hitbox.width - healthFillup, 5.0f, BLACK);
 
-	EndMode2D();
+	world.draw();
 
+	EndMode2D();
+	/*
+	// start ImGui Conent
+	rlImGuiBegin();
+
+	// show ImGui Content
+	bool open = true;
+	ImGui::ShowDemoWindow(&open);
+
+	// end ImGui Content
+	rlImGuiEnd();
+	*/
 	/*
 	DrawText(TextFormat("Boxy: %f", collisionBoxyCzas.count()), 400, 80, 20, RED);
 	DrawText(TextFormat("Linie: %f", linieCzas.count()), 400, 100, 20, RED);
@@ -375,6 +403,8 @@ void DrawGameplayScreen(void) {
 void UnloadGameplayScreen(void) {
 	// TODO: Unload GAMEPLAY screen variables here!
 	UnloadTexture(player.apperance);
+	world.~WorldObject();
+	//rlImGuiShutdown();
 }
 
 // Gameplay Screen should finish?
