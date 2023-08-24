@@ -113,33 +113,8 @@ GameObject* createUser() {
 }
 
 void PlayerControlsObject::update(GameObject& gameObject) {
-	// int keyValue = GetKeyPressed();
-	// std::cout << "Key value: " << keyValue << "\n";
 	float upDown = (float)(IsKeyDown(KEY_S) - IsKeyDown(KEY_W)), leftRight = (float)(IsKeyDown(KEY_D) - IsKeyDown(KEY_A));
 
-	/*
-	while (keyValue) {
-		switch (keyValue) {
-		case KEY_W:
-			upDown += ACCELERATION;
-			break;
-		case KEY_S:
-			upDown -= ACCELERATION;
-			break;
-		case KEY_A:
-			leftRight -= ACCELERATION;
-			break;
-		case KEY_D:
-			leftRight += ACCELERATION;
-			break;
-		}
-
-		keyValue = GetKeyPressed();
-		std::cout << "Key value: " << keyValue << "\n";
-	}
-	*/
-
-	// gameObject.direction = { upDown, leftRight };
 #if DEBUG
 	if (leftRight || upDown)
 		std::cout << "Key value (C): " << leftRight << " " << upDown << "\n";
@@ -148,86 +123,8 @@ void PlayerControlsObject::update(GameObject& gameObject) {
 	gameObject.velocity = Vector2Scale(Vector2Normalize({ leftRight, upDown }), ACCELERATION);
 }
 
-// still bug ?
-// corner can send the object up (top right corner) because the suggested normal is different than desired
-// maybe just make it check each side and call it a day at this point
-/*
-void PhysicsObject::update(GameObject& gameObject, WorldObject& world) {
-#if DEBUG
-	if (gameObject.velocity.x || gameObject.velocity.y)
-		std::cout << "Key value (P): " << gameObject.velocity.x << " " << gameObject.velocity.y << "\n";
-#endif
-
-	// Check hitboxes
-	std::vector<GameObject* >::iterator it;
-	Rectangle objectHitbox = { 0,0,0,0 };
-	for (it = world.gameObjectsArray.begin(); it != world.gameObjectsArray.end(); it++) {
-		if (*it == &gameObject) continue;
-
-		objectHitbox = (*it)->getPhysicsObject()->hitbox;
-		if (!CheckCollisionRecs(this->hitbox, objectHitbox)) continue;
-		// Calc here bounce direction and whenever change is needed (if objects are already going apart, no need to change the values again).
-
-		if (gameObject.velocity.x || gameObject.velocity.y) {
-#if DEBUG
-			std::cout << "Hit\n";
-#endif
-		}
-		else continue;
-
-		Vector2 normal = 
-			Vector2Subtract({ this->hitbox.x + this->hitbox.width * 0.5f, this->hitbox.y + this->hitbox.height * 0.5f },
-				{ objectHitbox.x + objectHitbox.width * 0.5f, objectHitbox.y + objectHitbox.height * 0.5f });
-
-#if DEBUG
-		if (gameObject.velocity.x || gameObject.velocity.y)
-			std::cout << "Normal:" << normal.x << " " << normal.y << "\n";
-#endif
-
-		float valueX = powf(normal.x, 2), valueY = powf(normal.y, 2);
-
-		if (valueX < valueY)
-			normal = { 0.0f, normal.y / sqrtf(valueY)};
-		else if (valueX > valueY) 
-			normal = { normal.x / sqrtf(valueX), 0.0f};
-
-		normal = Vector2Normalize(normal);
-#if DEBUG
-		if (gameObject.velocity.x || gameObject.velocity.y)
-			std::cout << "To add normal:" << normal.x << " " << normal.y << "\n";
-#endif
-
-		gameObject.velocity = Vector2Reflect(gameObject.velocity, normal);
-		// gameObject.position = Vector2Add(gameObject.position, gameObject.velocity);
-		
-		// 0.1f offset
-		if (normal.x > 0) {
-			gameObject.position.x = objectHitbox.x + objectHitbox.width + 0.1f;
-		}
-		else if (normal.x < 0) {
-			gameObject.position.x = objectHitbox.x - gameObject.getPhysicsObject()->hitbox.width - 0.1f;
-		}
-
-		if (normal.y > 0) {
-			gameObject.position.y = objectHitbox.y + objectHitbox.height + 0.1f;
-		}
-		else if (normal.y < 0) {
-			gameObject.position.y = objectHitbox.y - gameObject.getPhysicsObject()->hitbox.height - 0.1f;
-		}
-	}
-	
-	gameObject.position = Vector2Add(gameObject.position, gameObject.velocity);
-#if DEBUG
-	if (gameObject.velocity.x || gameObject.velocity.y)
-		std::cout << "Position (P): " << gameObject.position.x << " " << gameObject.position.y << "\n";
-#endif
-	hitbox.x = gameObject.position.x;
-	hitbox.y = gameObject.position.y;
-}
-*/
 void PhysicsObject::update(GameObject& gameObject, WorldObject& world) {
 	Rectangle objectHitbox = { 0,0,0,0 };
-	float furthestDistance = -1.0f;
 	hitLocation closestHitLocation;
 	std::vector<GameObject* >::iterator it;
 
@@ -253,36 +150,36 @@ void PhysicsObject::update(GameObject& gameObject, WorldObject& world) {
 					// left &/ bottom
 					if (hitbox.y + hitbox.height < objectHitbox.y + objectHitbox.height) {
 						// left
+#if DEBUG
 						std::cout << "left\n";
+#endif
+						closestHitLocation = LEFT;
 						normal.x = -1.0f;
 					}
 					else if (hitbox.y + hitbox.height > objectHitbox.y + objectHitbox.height) {
 						// bottom left
+#if DEBUG
 						std::cout << "bottom left\n";
-
-						float distanceX = objectHitbox.x + objectHitbox.width * 0.5f - (hitbox.x + hitbox.width * 0.5f);
-						float distanceY = hitbox.y + hitbox.height * 0.5f - (objectHitbox.y + objectHitbox.height * 0.5f);
-						std::cout << distanceX << " " << distanceY << "\n";
-						if (distanceX > distanceY) normal.x = -1.0f;
-						else normal.y = 1.0f;
+#endif
+						closestHitLocation = BOTTOM_LEFT;
 					}
 				}
 				else if (hitbox.y < objectHitbox.y) {
 					// left &/ top
 					if (hitbox.y + hitbox.height > objectHitbox.y + objectHitbox.height) {
 						// left
+#if DEBUG
 						std::cout << "left\n";
+#endif
+						closestHitLocation = LEFT;
 						normal.x = -1.0f;
 					}
 					else if (hitbox.y + hitbox.height < objectHitbox.y + objectHitbox.height) {
 						// top left
+#if DEBUG
 						std::cout << "top left\n";
-
-						float distanceX = objectHitbox.x + objectHitbox.width * 0.5f - (hitbox.x + hitbox.width * 0.5f);
-						float distanceY =  objectHitbox.y + objectHitbox.height * 0.5f - (hitbox.y + hitbox.height * 0.5f);
-						std::cout << distanceX << " " << distanceY << "\n";
-						if (distanceX > distanceY) normal.x = -1.0f;
-						else normal.y = -1.0f;
+#endif
+						closestHitLocation = TOP_LEFT;
 					}
 				}
 			}
@@ -292,12 +189,18 @@ void PhysicsObject::update(GameObject& gameObject, WorldObject& world) {
 				// top/bottom
 				if (hitbox.y > objectHitbox.y) {
 					// bottom
+#if DEBUG
 					std::cout << "bottom\n";
+#endif
 					normal.y = 1.0f;
+					closestHitLocation = BOTTOM;
 				}
 				else if (hitbox.y < objectHitbox.y) {
 					// top
+#if DEBUG
 					std::cout << "top\n";
+#endif
+					closestHitLocation = TOP;
 					normal.y = -1.0f;
 				}
 			}
@@ -306,34 +209,36 @@ void PhysicsObject::update(GameObject& gameObject, WorldObject& world) {
 				if (hitbox.y > objectHitbox.y) {
 					if (hitbox.y + hitbox.height < objectHitbox.y + objectHitbox.height) {
 						// right
+#if DEBUG
 						std::cout << "right\n";
+#endif
 						normal.x = 1.0f;
+						closestHitLocation = RIGHT;
 					}
 					else if (hitbox.y + hitbox.height > objectHitbox.y + objectHitbox.height) {
 						// bottom right
+#if DEBUG
 						std::cout << "bottom right\n";
-						float distanceX = hitbox.x + hitbox.width * 0.5f - (objectHitbox.x + objectHitbox.width * 0.5f);
-						float distanceY = hitbox.y + hitbox.height * 0.5f - (objectHitbox.y + objectHitbox.height * 0.5f);
-						std::cout << distanceX << " " << distanceY << "\n";
-						if (distanceX > distanceY) normal.x = -1.0f;
-						else normal.y = 1.0f;
+#endif
+						closestHitLocation = BOTTOM_RIGHT;
 					}
 				}
 				else if (hitbox.y < objectHitbox.y) {
 					// right &/top
 					if (hitbox.y + hitbox.height > objectHitbox.y + objectHitbox.height) {
 						// right
+#if DEBUG
 						std::cout << "right\n";
+#endif
+						closestHitLocation = RIGHT;
 						normal.x = 1.0f;
 					}
 					else if (hitbox.y + hitbox.height < objectHitbox.y + objectHitbox.height) {
 						// top right
+#if DEBUG
 						std::cout << "top right\n";
-						float distanceX = hitbox.x + hitbox.width * 0.5f - (objectHitbox.x + objectHitbox.width * 0.5f);
-						float distanceY = objectHitbox.y + objectHitbox.height * 0.5f - (hitbox.y + hitbox.height * 0.5f);
-						std::cout << distanceX << " " << distanceY << "\n";
-						if (distanceX > distanceY) normal.x = 1.0f;
-						else normal.y = -1.0f;
+#endif
+						closestHitLocation = TOP_RIGHT;
 					}
 				}
 			}
@@ -341,10 +246,28 @@ void PhysicsObject::update(GameObject& gameObject, WorldObject& world) {
 
 #if DEBUG
 		if (gameObject.velocity.x || gameObject.velocity.y)
-			std::cout << "To add normal:" << normal.x << " " << normal.y << "\n";
+			std::cout << "Normal vector:" << normal.x << " " << normal.y << "\n";
 #endif
-		// prawdopodobnie trzeba oddzielne dla naro¿ników, bo inaczej wariacje s¹
-		gameObject.velocity = Vector2Reflect(gameObject.velocity, normal);
+
+		switch (closestHitLocation) {
+		case LEFT:
+		case RIGHT:
+			gameObject.velocity.x = fabsf(gameObject.velocity.x) * normal.x;
+			break;
+		case TOP:
+		case BOTTOM:
+			gameObject.velocity.y = fabsf(gameObject.velocity.y) * normal.y;
+			break;
+		case TOP_LEFT:
+		case BOTTOM_LEFT:
+		case TOP_RIGHT:
+		case BOTTOM_RIGHT:
+			vectorReflection(gameObject.velocity, objectHitbox, closestHitLocation);
+			break;
+		case NONE:
+		default:
+			break;
+		}
 
 #if DEBUG
 		if (gameObject.velocity.x || gameObject.velocity.y)
@@ -362,6 +285,45 @@ void PhysicsObject::update(GameObject& gameObject, WorldObject& world) {
 	hitbox.y = gameObject.position.y;
 }
 
+void PhysicsObject::vectorReflection(Vector2& velocity, Rectangle& objectHitbox, hitLocation hitLocation_) {
+	float distanceX = 0.0f, distanceY = 0.0f;
+
+	switch (hitLocation_) {
+	case TOP_LEFT:
+		distanceX = objectHitbox.x + objectHitbox.width * 0.5f - (hitbox.x + hitbox.width * 0.5f);
+		distanceY = objectHitbox.y + objectHitbox.height * 0.5f - (hitbox.y + hitbox.height * 0.5f);
+
+		if (distanceX > distanceY) velocity.x = fabsf(velocity.x) * -1.0f; // normal.x = -1.0f;
+		else velocity.y = fabsf(velocity.y) * -1.0f; // normal.y = -1.0f;
+		break;
+	case BOTTOM_LEFT:
+		distanceX = objectHitbox.x + objectHitbox.width * 0.5f - (hitbox.x + hitbox.width * 0.5f);
+		distanceY = hitbox.y + hitbox.height * 0.5f - (objectHitbox.y + objectHitbox.height * 0.5f);
+		
+		if (distanceX > distanceY) velocity.x = fabsf(velocity.x) * -1.0f; // normal.x = -1.0f;
+		else velocity.y = fabsf(velocity.y); // normal.y = 1.0f;
+		break;
+	case TOP_RIGHT:
+		distanceX = hitbox.x + hitbox.width * 0.5f - (objectHitbox.x + objectHitbox.width * 0.5f);
+		distanceY = objectHitbox.y + objectHitbox.height * 0.5f - (hitbox.y + hitbox.height * 0.5f);
+
+		if (distanceX > distanceY) velocity.x = fabsf(velocity.x); // normal.x = 1.0f;
+		else velocity.y = fabsf(velocity.y) * -1.0f; // normal.y = -1.0f;
+		break;
+	case BOTTOM_RIGHT:
+		distanceX = hitbox.x + hitbox.width * 0.5f - (objectHitbox.x + objectHitbox.width * 0.5f);
+		distanceY = hitbox.y + hitbox.height * 0.5f - (objectHitbox.y + objectHitbox.height * 0.5f);
+
+		if (distanceX > distanceY) velocity.x = fabsf(velocity.x); // normal.x = 1.0f;
+		else velocity.y = fabsf(velocity.y); // normal.y = 1.0f;
+		break;
+	default:
+#if DEBUG
+		std::cout << "Why are you even here?????\n";
+#endif
+		break;
+	}
+}
 
 /*
 void GraphicsObject::update(GameObject& gameObject) {
