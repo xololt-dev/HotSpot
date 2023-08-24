@@ -4,10 +4,15 @@
 #include <iterator>
 
 enum hitLocation {
-	LEFT,
-	RIGHT,
-	TOP,
-	BOTTOM
+	NONE = 0,
+	LEFT = 8,
+	RIGHT = 1,
+	TOP = 4,
+	BOTTOM = 2,
+	TOP_LEFT = 12,
+	BOTTOM_LEFT = 10,
+	TOP_RIGHT = 5,
+	BOTTOM_RIGHT = 3
 };
 
 class GameObject;
@@ -87,6 +92,8 @@ public:
 
 private:
 	Rectangle hitbox;
+
+	void vectorReflection(Vector2& velocity, Rectangle& objectHitbox, hitLocation hitLocation_);
 	// Vector2 acceleration;
 	// float weight;
 };
